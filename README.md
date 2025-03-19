@@ -29,9 +29,7 @@ https://github.com/user-attachments/assets/e5be25e6-5a42-478b-8e9b-43a18923bd72
 ### 项目部署方式：
 一定要有Docker！
 
-要有一台能编译和运行Docker镜像的服务器，并且有域名能够被外网正常访问。
-
-需要在服务器上安装.net8 SDK。https://learn.microsoft.com/zh-cn/dotnet/core/install/linux?WT.mc_id=dotnet-35129-website
+要有一台能编译和运行Docker镜像的服务器，并且有域名能够被外网正常访问。使用二阶段编译，除了docker不依赖任何编译环境。
 
 本项目运行需要一个Mysql和一个Redis，有专用的最好，没有的话在本机用Docker启动两个也可以，只要项目能连的上就行。（Redis是存储上下文的，如果Redis重启丢数据那当前的上下文就丢了。）
 
