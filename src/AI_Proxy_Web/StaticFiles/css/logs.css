@@ -1,0 +1,100 @@
+html {
+    -webkit-print-color-adjust: exact;
+}
+pre {
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    word-wrap: break-word;
+    font-size: 13px;
+    line-height: 160%;
+}
+h1{
+    font-size: 24px;
+}
+h2{
+    font-size: 22px;
+}
+h3{
+    font-size: 20px;
+}
+h4, h5, h6{
+    font-size: 18px;
+}
+.con{
+    max-width:700px;
+    margin:0 auto;
+    font-family:"AR PL UKai CN", "AR PL UMing CN", "华文楷体", "楷体-简", "楷体", Arial, sans-serif;
+    font-size:18px;
+    line-height:180%;
+    word-wrap: break-word;
+}
+.title{
+    width:100%;text-align:center;font-weight:bold;
+    border-bottom:solid 1px #a2a2a2;line-height:200%;
+}
+.me, .gpt{
+    margin: 10px 0;
+}
+.me{
+    text-align:right;
+}
+.me .u{
+    text-align:right;
+    margin-bottom:10px;
+    font-weight:bold;
+}
+.me .q{
+    margin:0 0 0 60px;
+    border-radius:10px;
+    padding:2px;
+    display:inline-block;
+    text-align:justify;
+}
+.me .q p, .gpt .a p{
+    margin:0;
+}
+.gpt .u{
+    margin-bottom:10px;
+    font-weight:bold;
+}
+.gpt .a{
+    margin:0 50px 0 0;
+    border-radius:10px;
+    padding:2px;
+}
+.markmap {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    display: block;
+    height: 95vh;
+    overflow: visible;
+    word-break: break-all;
+    white-space: nowrap;
+}
+
+.markmap{--markmap-max-width: 9999px;--markmap-a-color: #0097e6;--markmap-a-hover-color: #00a8ff;--markmap-code-bg: #f0f0f0;--markmap-code-color: #555;--markmap-highlight-bg: #ffeaa7;--markmap-table-border: 1px solid currentColor;--markmap-font: 300 16px/20px sans-serif;--markmap-circle-open-bg: #fff;--markmap-text-color: #333;font:var(--markmap-font);color:var(--markmap-text-color)}
+.markmap-link{fill:none}
+.markmap-node>circle{cursor:pointer}
+.markmap-foreign{display:inline-block}
+.markmap-foreign p{margin:0}
+.markmap-foreign a{color:var(--markmap-a-color)}
+.markmap-foreign a:hover{color:var(--markmap-a-hover-color)}
+.markmap-foreign code{padding:.25em;font-size:calc(1em - 2px);color:var(--markmap-code-color);background-color:var(--markmap-code-bg);border-radius:2px}
+.markmap-foreign pre{margin:0}
+.markmap-foreign pre>code{display:block}
+.markmap-foreign del{text-decoration:line-through}
+.markmap-foreign em{font-style:italic}
+.markmap-foreign strong{font-weight:700}
+.markmap-foreign mark{background:var(--markmap-highlight-bg)}
+.markmap-foreign table,.markmap-foreign th,.markmap-foreign td{border-collapse:collapse;border:var(--markmap-table-border)}
+.markmap-foreign img{display:inline-block}
+.markmap-foreign svg{fill:currentColor}
+.markmap-foreign>div{width:var(--markmap-max-width);text-align:left}
+.markmap-foreign>div>div{display:inline-block}
+.markmap-dark .markmap{--markmap-code-bg: #1a1b26;--markmap-code-color: #ddd;--markmap-circle-open-bg: #444;--markmap-text-color: #eee}

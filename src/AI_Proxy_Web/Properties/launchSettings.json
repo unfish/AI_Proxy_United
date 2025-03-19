@@ -1,0 +1,15 @@
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "OpenAI_Web": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchUrl": "/",
+      "applicationUrl": "http://*:5141",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "TESSDATA_PREFIX": "~/Download/tessdata-4.1.0/"
+      }
+    }
+  }
+}
