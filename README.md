@@ -21,6 +21,9 @@
 ![效果预览](readme/preview.png)
 
 
+https://github.com/user-attachments/assets/e5be25e6-5a42-478b-8e9b-43a18923bd72
+
+
 ### 项目部署方式：
 一定要有Docker！
 要有一台能编译和运行Docker镜像的服务器，并且有域名能够被外网正常访问。需要在服务器上安装.net8 SDK。https://learn.microsoft.com/zh-cn/dotnet/core/install/linux?WT.mc_id=dotnet-35129-website
