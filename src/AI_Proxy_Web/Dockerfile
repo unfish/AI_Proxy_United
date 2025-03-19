@@ -1,3 +1,14 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
+WORKDIR /App
+COPY AI_Proxy_Web.csproj ./
+# Restore as distinct layers
+RUN dotnet restore  --disable-parallel
+
+COPY . ./
+RUN dotnet publish --property WarningLevel=0 -c Release -o out
+COPY config.json out/
+
+
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 ENV TZ=Asia/Shanghai
 # Suppress an apt-key warning about standard out not being a terminal. Use in this script is safe.
@@ -34,5 +45,5 @@ RUN yes | npx playwright@1.50.0 install chromium && npm cache clean --force
 COPY fonts/* /usr/share/fonts
 RUN fc-cache -fv
 
-COPY bin/out .
+COPY --from=build-env /App/out .
 ENTRYPOINT ["dotnet", "AI_Proxy_Web.dll"]
