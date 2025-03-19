@@ -20,6 +20,7 @@
 6. 可以很方便的接到很多个飞书机器人的后面，每个机器人负责某一个专一功能，比如专门读书的，专门使用浏览器的，等等。
 ![效果预览](readme/preview.png)
 
+
 ### 项目部署方式：
 一定要有Docker！
 要有一台能编译和运行Docker镜像的服务器，并且有域名能够被外网正常访问。需要在服务器上安装.net8 SDK。https://learn.microsoft.com/zh-cn/dotnet/core/install/linux?WT.mc_id=dotnet-35129-website
@@ -80,9 +81,9 @@ Mysql最好也能远程连接或者有其它管理界面，因为提示词模板
 后面就是各个模型的地址和Key等等，看情况配置，没有配置Key的，上面也不要加为可用。
 大部分公司模型名称是统一的，所以不用配置，只有豆包每个人看到的模型ID是不一样的，需要配置进去。还有的公司有两套验证机制，所以可能要配置多套Key。
 
-### 初始开源，水平一般，请多多包涵，共同交流，共同进步。
+### 初次开源，水平一般，请多多包涵，共同交流，共同进步。
 项目问题、AI爱好者、开发爱好者，欢迎进飞书群交流。
-![飞书群](readme/feishugroup.png =300x)
+<img src="https://github.com/unfish/AI_Proxy_United/blob/master/readme/feishugroup.png?raw=true" width="300"/>
 
 如果你觉得项目对你有帮助，欢迎打赏。
-![微信收款](readme/weixin.jpg = 300x)
+<img src="https://github.com/unfish/AI_Proxy_United/blob/master/readme/weixin.jpg?raw=true" width="300"/>
