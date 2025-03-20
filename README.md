@@ -55,16 +55,28 @@ Mysql最好也能远程连接或者有其它管理界面，因为提示词模板
 
 3.3 改完以后运行builddocker.sh脚本编译并打包docker镜像。
 
-3.4 如果需要在别的地方运行，把image push过去，如果在本地运行，docker run -p 8080:80就可以体验一下了。
+3.4 如果需要在别的地方运行，把image push过去，如果在本地运行，docker run -p 8080:8080 就可以体验一下了。(如果mysql和redis也运行在本地容器里，并且使用容器名字作为连接字符串，别忘了加上--link mysql:mysql --link redis:redis 参数。）
 
 3.5 把这个端口用任何方式映射到外网可访问，去配置飞书机器人的消息通知地址。在飞书开放平台机器人管理界面，事件与回调，事件配置和回调配置两个页面的请求地址都是 https://你的访问域名/api/ai/feishu/event
 ，只要地址能保存成功，基本上就没问题了。在事件配置里订阅两个事件：im.message.receive_v1，application.bot.menu_v6，在回调配置里订阅一个事件：card.action.trigger。
 
 6. 给飞书配置几个菜单，建议使用悬浮式菜单。至少需要一个『新会话』按钮，事件名称是menu_startnewcontext，一个切换模型的按钮，事件名称是menu_to_all，也可以将几个指定模型设为快捷菜单来快速切换，事件名称是menu_to_x 把x换成这个模型的枚举值对应的数字即可。
-7. 然后需要往chatgptprompts，然后给飞书菜单上再配一个提示词模板的按钮，可以将一些COT之类的复杂提示词变成一个按钮，用户点一下再输入自己的简单问题就可以了。当然不配置模板也不影响使用。
-8. 需要往chatgptfunctions里添加几个Function定义，这样内置的Function才会起作用。你也可以尝试调整Function的描述和触发词，但参数名称不要改。
+
+   以下两步不是必须的：
+8. 然后需要往chatgptprompts，然后给飞书菜单上再配一个提示词模板的按钮，可以将一些COT之类的复杂提示词变成一个按钮，用户点一下再输入自己的简单问题就可以了。当然不配置模板也不影响使用。
+9. 需要往chatgptfunctions里添加几个Function定义，这样内置的Function才会起作用。你也可以尝试调整Function的描述和触发词，但参数名称不要改。
    
 （在readme目录下有两个excel文件，你可以直接导进去。）
+
+如果你不想使用容器，它也是可以本地直接运行的，但对服务器环境可能有些要求，推荐使用Ubuntu 22，需要在服务器上安装.Net 8 SDK，参考 https://learn.microsoft.com/zh-cn/dotnet/core/install/linux?WT.mc_id=dotnet-35129-website
+
+并使用Dockerfile里的RUN命令，安装google-chrome-stable，解压并移动 chromedriver_linux64.zip ，中文字体fonts-arphic-uming，npm, 以及通过npx安装 playwright。以及复制fonts/*文件和刷新字体缓存。
+
+这些装完以后，可以直接在项目目录下运行命令dotnet run，就可以以debug模式启动项目，并使用 5141 端口。
+
+然后可以运行 dotnet publish --property WarningLevel=0 -c Release -o bin/out
+
+再把config.json复制到bin/out目录，然后cd进入bin/out，运行 dotnet AI_Proxy_Web.dll 就可以以生产模式运行。如果要以后台模式运行，后面加上 & 就可以了。不然退出终端的时候程序就被退出了。
 
 ### 配置文件说明
 
@@ -76,7 +88,7 @@ Mysql最好也能远程连接或者有其它管理界面，因为提示词模板
   },
   "Connection": {
     "DB": "xx", //Mysql标准连接字符串,如 server=xxx;database=xxx;uid=xxx;pwd=xxx;SslMode=none
-    "Redis": "xx"  //Redis标准连接字符串
+    "Redis": "xx"  //Redis标准连接字符串，如 192.168.0.10:6379
   },
   "AliOss": { //阿里云OSS的配置，个别模型上传图片时必须用地址，才需要用到这个功能，没有可以直接忽略
     "Endpoint": "xx",
