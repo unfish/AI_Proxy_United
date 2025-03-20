@@ -22,7 +22,7 @@ public class ApiDearApiGpt4 : ApiGPT4Original
     public ApiDearApiGpt4(ConfigHelper configuration, IServiceProvider serviceProvider) : base(configuration, serviceProvider)
     {
         chatUrl = "https://api.dearapi.com/v1/chat/completions";
-        apiKey = configuration.GetConfig<string>("DeerApi:Key");
+        apiKey = configuration.GetConfig<string>("Service:DeerApi:Key");
         modelName = "chatgpt-4o-latest";
     }
 }

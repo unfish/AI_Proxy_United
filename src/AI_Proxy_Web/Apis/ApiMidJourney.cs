@@ -107,8 +107,8 @@ public class MidJourneyClient: IApiClient
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
-        APIKEY = configuration.GetConfig<string>("OhMyGpt:Key");
-        hostUrl = configuration.GetConfig<string>("OhMyGpt:Host");
+        APIKEY = configuration.GetConfig<string>("Service:OhMyGpt:Key");
+        hostUrl = configuration.GetConfig<string>("Service:OhMyGpt:Host");
     }
     
     private String hostUrl;
@@ -259,7 +259,7 @@ public class MidJourneyClient: IApiClient
                     {
                         yield return Result.Waiting("画图完成，下载图片...");
                         var img_url = json["data"]["imageDcUrl"].Value<string>();
-                        var proxy = _configuration.GetConfig<string>("Discord:CdnHost");
+                        var proxy = _configuration.GetConfig<string>("Service:Discord:CdnHost");
                         if (!string.IsNullOrEmpty(proxy))
                             img_url = img_url.Replace("https://cdn.discordapp.com/", proxy);
                         var bytes = await client.GetByteArrayAsync(img_url);

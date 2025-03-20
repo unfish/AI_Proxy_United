@@ -39,8 +39,8 @@ public class AudioService: IAudioService
             case "openai":
             {
                 var configuration = _serviceProvider.GetRequiredService<ConfigHelper>();
-                var openAIAPIKEY = configuration.GetConfig<string>("OpenAI:Key");
-                var openAIHostUrl = configuration.GetConfig<string>("OpenAI:Host");
+                var openAIAPIKEY = configuration.GetConfig<string>("Service:OpenAI:Key");
+                var openAIHostUrl = configuration.GetConfig<string>("Service:OpenAI:Host");
                 var openai = _serviceProvider.GetRequiredService<OpenAIClient>();
                 openai.Setup(openAIHostUrl, openAIAPIKEY);
                 return await openai.VoiceToText(bytes, fileName);
@@ -80,8 +80,8 @@ public class AudioService: IAudioService
         else
         {
             var configuration = _serviceProvider.GetRequiredService<ConfigHelper>();
-            var openAIAPIKEY = configuration.GetConfig<string>("OpenAI:Key");
-            var openAIHostUrl = configuration.GetConfig<string>("OpenAI:Host");
+            var openAIAPIKEY = configuration.GetConfig<string>("Service:OpenAI:Key");
+            var openAIHostUrl = configuration.GetConfig<string>("Service:OpenAI:Host");
             var openai = _serviceProvider.GetRequiredService<OpenAIClient>();
             openai.Setup(openAIHostUrl, openAIAPIKEY);
             return await openai.TextToVoice(text, voiceName, audioFormat);

@@ -59,9 +59,9 @@ public class GroqLlama3Client:OpenAIClientBase, IApiClient
     {
         _httpClientFactory = httpClientFactory;
         _functionRepository = functionRepository;
-        var host = configuration.GetConfig<string>("Groq:Host");
+        var host = configuration.GetConfig<string>("Service:Groq:Host");
         hostUrl = host + "openai/v1/chat/completions";
-        APIKEY = configuration.GetConfig<string>("Groq:Key");
+        APIKEY = configuration.GetConfig<string>("Service:Groq:Key");
     }
     
     private static string hostUrl;

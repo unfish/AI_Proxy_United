@@ -76,9 +76,9 @@ public class LumaAiClient: IApiClient
         _httpClientFactory = httpClientFactory;
         _serviceProvider = serviceProvider;
         
-        APIKEY = configuration.GetConfig<string>("LumaAI:Key");
-        hostUrl = configuration.GetConfig<string>("LumaAI:Host");
-        cdnHost = configuration.GetConfig<string>("LumaAI:CdnHost");
+        APIKEY = configuration.GetConfig<string>("Service:LumaAI:Key");
+        hostUrl = configuration.GetConfig<string>("Service:LumaAI:Host");
+        cdnHost = configuration.GetConfig<string>("Service:LumaAI:CdnHost");
     }
     private String hostUrl;
     private String cdnHost;

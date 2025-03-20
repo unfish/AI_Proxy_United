@@ -464,8 +464,8 @@ public class OpenAIAudioStreamClient : OpenAIClient, IAiWebSocketProxy
     private string apiKey;
     public OpenAIAudioStreamClient(IHttpClientFactory httpClientFactory, IFunctionRepository functionRepository,  ConfigHelper configuration) : base(httpClientFactory, functionRepository)
     {
-        hostUrl = configuration.GetConfig<string>("OpenAI:WssHost");
-        apiKey = configuration.GetConfig<string>("OpenAI:Key")??"";
+        hostUrl = configuration.GetConfig<string>("Service:OpenAI:WssHost");
+        apiKey = configuration.GetConfig<string>("Service:OpenAI:Key")??"";
     }
 
     private BlockingCollection<Result>? _results;
@@ -694,8 +694,8 @@ public class OpenAIRestClient:IOpenAIRestClient
     
     public OpenAIRestClient(ConfigHelper configuration, IHttpClientFactory httpClientFactory)
     {
-        var proxy = configuration.GetConfig<string>("OpenAI:Host");
-        var apikey = configuration.GetConfig<string>("OpenAI:Key");
+        var proxy = configuration.GetConfig<string>("Service:OpenAI:Host");
+        var apikey = configuration.GetConfig<string>("Service:OpenAI:Key");
         _client = new RestClient(proxy);
         _client.AddDefaultHeader("Authorization", "Bearer " + apikey);
         _client.AddDefaultParameter("OpenAI-Beta", "assistants=v2", ParameterType.HttpHeader);
@@ -710,8 +710,8 @@ public class OpenAIRestClient:IOpenAIRestClient
     
     public HttpClient GetHttpClient()
     {
-        var proxy = _configuration.GetConfig<string>("OpenAIOriginal_Host");
-        var apikey = _configuration.GetConfig<string>("OpenAIOriginal_Key");
+        var proxy = _configuration.GetConfig<string>("Service:OpenAI:Host");
+        var apikey = _configuration.GetConfig<string>("Service:OpenAI:Key");
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apikey);
         client.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v2");

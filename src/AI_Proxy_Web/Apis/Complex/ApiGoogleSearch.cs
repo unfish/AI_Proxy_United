@@ -180,9 +180,9 @@ public class GoogleSearchClient:OpenAIClientBase, IApiClient
     public GoogleSearchClient(IHttpClientFactory httpClientFactory, ConfigHelper configuration)
     {
         _httpClientFactory = httpClientFactory;
-        hostUrl = configuration.GetConfig<string>("GoogleSearch:Host") + "customsearch/v1";
-        APIKEY = configuration.GetConfig<string>("GoogleSearch:Key"); 
-        cx = configuration.GetConfig<string>("GoogleSearch:cx");
+        hostUrl = configuration.GetConfig<string>("Service:GoogleSearch:Host") + "customsearch/v1";
+        APIKEY = configuration.GetConfig<string>("Service:GoogleSearch:Key"); 
+        cx = configuration.GetConfig<string>("Service:GoogleSearch:cx");
     }
     
     private string hostUrl;

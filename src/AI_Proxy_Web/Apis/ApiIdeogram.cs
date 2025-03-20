@@ -51,9 +51,9 @@ public class IdeogramClient: IApiClient
     {
         _httpClientFactory = httpClientFactory;
         
-        APIKEY = configuration.GetConfig<string>("Ideogram:Key");
-        hostUrl = configuration.GetConfig<string>("Ideogram:Host") + "generate";
-        imageHost = configuration.GetConfig<string>("Ideogram:Image_Host");
+        APIKEY = configuration.GetConfig<string>("Service:Ideogram:Key");
+        hostUrl = configuration.GetConfig<string>("Service:Ideogram:Host") + "generate";
+        imageHost = configuration.GetConfig<string>("Service:Ideogram:Image_Host");
     }
     private String hostUrl;
     private String imageHost;

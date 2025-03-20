@@ -12,7 +12,7 @@ public class ApiPPIO_DeepSeekR1 : ApiGPT4Original
     public ApiPPIO_DeepSeekR1(ConfigHelper configuration, IServiceProvider serviceProvider) : base(configuration, serviceProvider)
     {
         chatUrl = "https://api.ppinfra.com/v3/openai/chat/completions";
-        apiKey = configuration.GetConfig<string>("PPIO:Key");
+        apiKey = configuration.GetConfig<string>("Service:PPIO:Key");
         modelName = "deepseek/deepseek-r1";
     }
 }
