@@ -118,8 +118,9 @@
       "Host": "https://api.perplexity.ai/",
       "Key": ""
     },
-    "Jina": { 
+    "Jina": {
       "Host": "https://r.jina.ai/",
+      "RemoveUrlProtocal": false,
       "Key": "",
       "DeepSearch_Host" : "https://deepsearch.jina.ai/"
     },

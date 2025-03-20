@@ -102,12 +102,14 @@ public class ApiJinaAiDeepSearch:ApiBase
 public class JinaAiClient:OpenAIClientBase,IApiClient
 {
     private IHttpClientFactory _httpClientFactory;
+    private ConfigHelper _configHelper;
     private string readerHost;
     private string deepSearchHost;
     private String APIKEY;//从开放平台控制台中获取
     public JinaAiClient(IHttpClientFactory httpClientFactory, ConfigHelper configHelper)
     {
         _httpClientFactory = httpClientFactory;
+        _configHelper = configHelper;
         readerHost = configHelper.GetConfig<string>("Service:Jina:Host");
         deepSearchHost = configHelper.GetConfig<string>("Service:Jina:DeepSearch_Host");
         APIKEY = configHelper.GetConfig<string>("Service:Jina:Key");
@@ -191,7 +193,8 @@ public class JinaAiClient:OpenAIClientBase,IApiClient
     {
         HttpClient client = _httpClientFactory.CreateClient();
         var source = input.ChatContexts.Contexts.Last().QC.Last().Content;
-        var url = readerHost+source.Replace("http://","").Replace("https://","");
+        var removeUrlProtocal = _configHelper.GetConfig<bool>("Service:Jina:RemoveUrlProtocal"); //如果使用Nginx代理中转，可能需要去掉Url前面的协议头，不然会造成转义错误(需要nginx中转规则里做补偿）
+        var url = readerHost + (removeUrlProtocal ? source.Replace("http://", "").Replace("https://", "") : source);
         try
         {
             var content = await client.GetStringAsync(url);
