@@ -42,7 +42,7 @@ public class PdfHelper
                                 x.Item().PaddingLeft(200).AlignRight().Background(Colors.Grey.Lighten5).Padding(5).Markdown(q.Content, options);
                         });
                         x.Spacing(20);
-                        x.Item().Markdown($"**易小智：**", options);
+                        x.Item().Markdown($"**AI：**", options);
                         ctx.AC.ForEach(q =>
                         {
                             if(q.Type== ChatType.文本)

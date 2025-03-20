@@ -57,6 +57,13 @@ public abstract class ApiBase
                 }
             }
         }
+
+        if (!string.IsNullOrEmpty(input.ChatContexts.SystemPrompt))
+        {
+            var configHelper = _serviceProvider.GetRequiredService<ConfigHelper>();
+            input.ChatContexts.SystemPrompt =
+                input.ChatContexts.SystemPrompt.Replace("{Instruction}", configHelper.GetConfig<string>("Instruction"));
+        }
         var dp = DI.GetApiClassAttribute(input.ChatModel);
         //预留处理，当使用多代理功能的时候，用户的输入可能要转发给下级代理来处理
         if (input.QuestionContents.Count > 0)

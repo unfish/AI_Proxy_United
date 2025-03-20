@@ -8,7 +8,7 @@ namespace AI_Proxy_Web.Models;
 
 public class ChatContexts
 {
-    public string? SystemPrompt { get; set; } = $"当前时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n你是一位聪明的个人助理，名字叫易小智。除非用户主动问你，否则不用自我介绍，直接回答用户的问题。\n";
+    public string? SystemPrompt { get; set; } = $"当前时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\n{{Instruction}}\n";
     public string SessionId { get; set; } = Guid.NewGuid().ToString("N");
     public List<ChatContext> Contexts { get; set; } = new List<ChatContext>();
 

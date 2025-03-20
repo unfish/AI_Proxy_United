@@ -98,6 +98,7 @@ Mysql最好也能远程连接或者有其它管理界面，因为提示词模板
     "AccessSecret": "",
     "BucketName": ""
   },
+  "Instruction": "xx", //自动加在提示词的System部分的介绍，可以用于限定AI回答使用的名字、回答的风格、甚至一些内置的知识都可以
   "FeiShu": { //飞书机器人的配置，可以只配置Main这一个，Book是用来让你自行添加多个其它机器人的时候的参考，只需要复制一个BookFeishuService，复制一个BookFeishuController，改一点里面的内容就可以了。
     "Main": {
       "AppId": "cli_",

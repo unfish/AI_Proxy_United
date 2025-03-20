@@ -13,6 +13,7 @@
     "AccessSecret": "",
     "BucketName": ""
   },
+  "Instruction": "你是一位聪明的个人助理，名字叫小智。除非用户主动问你，否则不用自我介绍，直接回答用户的问题。",
   "FeiShu": {
     "Main": {
       "AppId": "cli_",
