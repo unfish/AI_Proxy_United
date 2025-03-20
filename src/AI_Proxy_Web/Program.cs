@@ -32,7 +32,9 @@ builder.Services.AddCors(options =>
                 .AllowAnyMethod();
         });
 });
-builder.Services.AddHangfire(config => config.UseInMemoryStorage());
+builder.Services.AddHangfire(config =>
+    config.UseInMemoryStorage().UseFilter(new AutomaticRetryAttribute() { Attempts = 2 })); //Hangfire如果因为异常重启，最多只重试一次
+builder.Services.AddHangfireServer();
 builder.Services.AddHangfireServer();
 
 var app = builder.Build();
