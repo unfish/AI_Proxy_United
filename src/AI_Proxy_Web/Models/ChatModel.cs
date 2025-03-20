@@ -88,7 +88,7 @@ public class ChatModel
 
     public static int GetSysDefaultModel()
     {
-        return (int)M.GPT4o_Mini;
+        return allModels.FirstOrDefault()?.Id ?? 0;
     }
 
     public static bool IsModel(int value, Type apiClass)

@@ -77,6 +77,8 @@ public class FeishuService: BaseFeishuService, IFeishuService
         foreach (var type in Enum.GetValuesAsUnderlyingType(typeof(ApiClassTypeEnum)))
         {
             var typeName = ((ApiClassTypeEnum)type).ToString();
+            if (!list.Any(t => t.Type == typeName))
+                continue;
             foreach (var menu in list.Where(t=>t.Type == typeName))
             {
                 actions.Add(new
