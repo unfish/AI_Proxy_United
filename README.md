@@ -72,6 +72,8 @@ Mysql最好也能远程连接或者有其它管理界面，因为提示词模板
 
 并使用Dockerfile里的RUN命令，安装google-chrome-stable，解压并移动 chromedriver_linux64.zip ，中文字体fonts-arphic-uming，npm, 以及通过npx安装 playwright。以及复制fonts/*文件和刷新字体缓存。
 
+（如果不使用浏览器控制，和服务器端生成PDF、SVG功能的话，服务器上可以什么都不用装，直接dotnet run就行。）
+
 这些装完以后，可以直接在项目目录下运行命令dotnet run，就可以以debug模式启动项目，并使用 5141 端口。
 
 然后可以运行 dotnet publish --property WarningLevel=0 -c Release -o bin/out
