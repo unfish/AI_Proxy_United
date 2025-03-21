@@ -61,7 +61,6 @@ public class ApiTencent:ApiBase
     /// <summary>
     /// 只能输入单个字符串，1024 token以内，返回向量长度1024
     /// </summary>
-    /// <param name="input"></param>
     /// <returns></returns>
     public override async Task<(ResultType resultType, double[][]? result, string error)> ProcessEmbeddings(List<ChatContext.ChatContextContent> qc, bool embedForQuery =  false)
     {
@@ -79,7 +78,7 @@ public class ApiTencentTools : ApiTencent
     }
 }
 
-[ApiClass(M.混元T1, "混元T1", "腾讯混元T1，腾讯推出的类R1推理模型。", 125, canUseFunction:false,  priceIn: 4, priceOut: 8)]
+[ApiClass(M.混元T1, "混元T1", "腾讯混元T1，腾讯推出的类R1推理模型。", 125, type: ApiClassTypeEnum.推理模型, canUseFunction:false,  priceIn: 4, priceOut: 8)]
 public class ApiTencentT1 : ApiTencent
 {
     public ApiTencentT1(IServiceProvider serviceProvider):base(serviceProvider)
@@ -133,6 +132,9 @@ public class TencentClient:OpenAIClientBase, IApiClient
             input.ChatContexts.AddQuestion(funcPrompt, ChatType.System);
         var msgs = GetFullMessages(input.ChatContexts);
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
+        var max_tokens = isImageMsg ? 1024 : 4096;
+        if(modelName.Contains("t1"))
+            max_tokens = 32000;
         return JsonConvert.SerializeObject(new
         {
             model = model,
@@ -140,7 +142,7 @@ public class TencentClient:OpenAIClientBase, IApiClient
             temperature = input.Temprature,
             tools = tools,
             stream,
-            max_tokens =  isImageMsg ? 1024: 4096,
+            max_tokens =  max_tokens,
             user = input.External_UserId
         }, jSetting);
     }
