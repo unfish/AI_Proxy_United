@@ -79,6 +79,15 @@ public class ApiTencentTools : ApiTencent
     }
 }
 
+[ApiClass(M.混元T1, "混元T1", "腾讯混元T1，腾讯推出的类R1推理模型。", 125, canUseFunction:false,  priceIn: 4, priceOut: 8)]
+public class ApiTencentT1 : ApiTencent
+{
+    public ApiTencentT1(IServiceProvider serviceProvider):base(serviceProvider)
+    {
+        _client.SetModel("hunyuan-t1-latest");
+    }
+}
+
 /// <summary>
 /// 腾讯混元大模型接口
 /// 文档地址 https://cloud.tencent.com/document/product/1729/101837

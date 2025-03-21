@@ -58,6 +58,7 @@ public enum M
     ClaudeThinking = 122,
     DeepClaude = 123,
     Grok3Thinking = 124,
+    混元T1 = 125,
     
     模型对战 = 183,
     模型群聊 = 184,
