@@ -284,6 +284,13 @@ public class FeishuService: BaseFeishuService, IFeishuService
             Type = "primary",
             Value = new CardButton.ButtonValue(){ Action = "", Type = "menu_send_astxt" }
         });
+        actions.Add(new CardButton()
+        {
+            Tag = "button",
+            Text = new CardButton.ButtonText(){ Tag = "plain_text", Content = "回复转语音发送" },
+            Type = "primary",
+            Value = new CardButton.ButtonValue(){ Action = "", Type = "menu_send_asvoice" }
+        });
         groups.Add(new
         {
             tag = "action", actions = actions.ToArray(), layout="default"
@@ -885,18 +892,18 @@ public class FeishuService: BaseFeishuService, IFeishuService
         string user_id, bool no_function = false, int specialModel = -1)
     {
         var text = qc.FirstOrDefault(t => t.Type == ChatType.文本)?.Content ?? "";
-        if (text.StartsWith("https://"))
-        {
-            SendMessage(user_id, GetLinkActionCardMessage(text, false),
-                FeishuMessageType.Interactive);
-            return;
-        }
-        else if (text.StartsWith("https://yesmro101.feishu.cn/docx/") ||
-                 text.StartsWith("https://yesmro101.feishu.cn/wiki/"))
+        if (text.StartsWith("https://yesmro101.feishu.cn/docx/") ||
+            text.StartsWith("https://yesmro101.feishu.cn/wiki/"))
         {
             var res = await GetFeiShuDocumentAndSummarize(user_id, text);
             if (!string.IsNullOrEmpty(res.message))
                 SendMessage(user_id, res.message);
+            return;
+        }
+        if (text.StartsWith("https://"))
+        {
+            SendMessage(user_id, GetLinkActionCardMessage(text, false),
+                FeishuMessageType.Interactive);
             return;
         }
         
@@ -1185,7 +1192,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
     }
 
-    private void StartNewContext(string user_id, bool roolUp = true)
+    public void StartNewContext(string user_id, bool roolUp = true)
     {
         ChatContexts.ClearChatContexts(user_id, contextCachePrefix);
         var chatModel = GetUserDefaultModel(user_id);
@@ -1213,16 +1220,11 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (event_key == "menu_send_astxt")
         {
-            var ctx = GetChatContexts(user_id);
-            if (ctx.Contexts.Count > 0 && ctx.Contexts.Last().AC.Any(t => t.Type == ChatType.文本))
-            {
-                SendMessage(user_id, ctx.Contexts.Last().AC.Last(t => t.Type == ChatType.文本).Content,
-                    FeishuMessageType.PlainText);
-            }
-            else
-            {
-                SendMessage(user_id, "没有找到最后一条回复内容。");
-            }
+            SendLastAnswerAsText(user_id);
+        }
+        else if (event_key == "menu_send_asvoice")
+        {
+            await SendLastAnswerAsVoice(user_id);
         }
         else if (event_key == "menu_to_all")
         {
@@ -1420,16 +1422,11 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (type == "menu_send_astxt")
         {
-            var ctx = GetChatContexts(user_id);
-            if (ctx.Contexts.Count > 0 && ctx.Contexts.Last().AC.Any(t => t.Type == ChatType.文本))
-            {
-                SendMessage(user_id, ctx.Contexts.Last().AC.Last(t => t.Type == ChatType.文本).Content,
-                    FeishuMessageType.PlainText);
-            }
-            else
-            {
-                SendMessage(user_id, "没有找到最后一条回复内容。");
-            }
+            SendLastAnswerAsText(user_id);
+        }
+        else if (type == "menu_send_asvoice")
+        {
+            await SendLastAnswerAsVoice(user_id);
         }
         else if (type == "menu_export_pdf")
         {
@@ -1638,6 +1635,49 @@ public class FeishuService: BaseFeishuService, IFeishuService
                 await AskGpt(defaultPrompt, user_id);
                 StartNewContext(user_id, false);
             }
+        }
+    }
+    
+    private void SendLastAnswerAsText(string user_id)
+    {
+        var ctx = GetChatContexts(user_id);
+        if (ctx.Contexts.Count > 0 && ctx.Contexts.Last().AC.Any(t => t.Type == ChatType.文本))
+        {
+            SendMessage(user_id, ctx.Contexts.Last().AC.Last(t => t.Type == ChatType.文本).Content,
+                FeishuMessageType.PlainText);
+        }
+        else
+        {
+            SendMessage(user_id, "没有找到最后一条回复内容。");
+        }
+    }
+
+    private async Task SendLastAnswerAsVoice(string user_id)
+    {
+        var ctx = GetChatContexts(user_id);
+        if (ctx.Contexts.Count > 0 && ctx.Contexts.Last().AC.Any(t => t.Type == ChatType.文本))
+        {
+            var api = _apiFactory.GetService(M.语音服务);
+            var resp = await api.ProcessQuery(ApiChatInput.New() with
+            {
+                QuestionContents =
+                ChatContext.NewContentList(ctx.Contexts.Last().AC.Last(t => t.Type == ChatType.文本).Content),
+                AudioFormat = "opus", IgnoreAutoContexts = true
+            });
+            if (resp.resultType == ResultType.AudioBytes)
+            {
+                var res = (FileResult)resp;
+                var file_key = UploadFileToFeishu(res.result, "语音.opus", res.duration);
+                SendMessage(user_id, file_key, FeishuMessageType.Audio);
+            }
+            else
+            {
+                Console.WriteLine(JsonConvert.SerializeObject(resp));
+            }
+        }
+        else
+        {
+            SendMessage(user_id, "没有找到最后一条回复内容。");
         }
     }
 

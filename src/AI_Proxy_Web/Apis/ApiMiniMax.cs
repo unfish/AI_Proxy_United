@@ -159,10 +159,12 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         _functionRepository = functionRepository;
         _httpClientFactory = httpClientFactory;
         APIKEY = configHelper.GetConfig<string>("Service:MiniMax:Key");
+        GroupId = configHelper.GetConfig<string>("Service:MiniMax:GroupId");
     }
     
     private static String hostUrl = "https://api.minimax.chat/v1/text/chatcompletion_v2";
     private string APIKEY;//从开放平台控制台中获取
+    private string GroupId;
     private string modelName = "abab6.5s-chat";
 
     public void SetModelName(string name)
@@ -221,6 +223,7 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         var url = hostUrl;
         var _client = _httpClientFactory.CreateClient();
         _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {APIKEY}");
+        _client.Timeout = TimeSpan.FromMinutes(5);
         var msg = GetMsgBody(input, true);
         var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -415,22 +418,31 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
     }
     
     
-    private string MiniMaxGetTTSMsg(string text, string voiceName)
+    private string MiniMaxGetTTSMsg(string text, string voiceName, string audioFormat, bool stream)
     {
-        var voice = "male-qn-jingying";
+        var voice = "male-qn-jingying-jingpin";
         if (!string.IsNullOrEmpty(voiceName) && voiceName.StartsWith("minimax_"))
             voice = voiceName.Replace("minimax_", "");
+        var formats = new[] { "mp3", "wav", "pcm", "flac" };
         return JsonConvert.SerializeObject(new
         {
-            model = "speech-01-hd",
+            model = "speech-02-hd-preview",
             text = text,
-            bitrate = 32000,
-            audio_sample_rate = 16000,
-            voice_id = voice
+            voice_setting = new
+            {
+                voice_id = voice,
+            },
+            audio_setting = new
+            {
+                sample_rate = 16000,
+                bitrate = 32000,
+                format = !string.IsNullOrEmpty(audioFormat) && formats.Contains(audioFormat) ? audioFormat : "mp3"
+            },
+            stream = stream
         });
     }
         
-    private static String ttsHostUrl = "https://api.minimax.chat/v1/t2a_pro?GroupId=1692585515409561";
+    private static String ttsHostUrl = "https://api.minimax.chat/v1/t2a_v2?GroupId=";
    
     /// <summary>
     /// MiniMax 文本转语音，支持长文本
@@ -439,10 +451,10 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
     /// <returns></returns>
     public async Task<Result> TextToVoice(string text, string voiceName, string audioFormat)
     {
-        var url = ttsHostUrl;
+        var url = ttsHostUrl+GroupId;
         var _client = _httpClientFactory.CreateClient();
         _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {APIKEY}");
-        var msg = MiniMaxGetTTSMsg(text, voiceName);
+        var msg = MiniMaxGetTTSMsg(text, voiceName, audioFormat, false);
         var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new StringContent(msg, Encoding.UTF8, "application/json")
@@ -451,46 +463,28 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         var json = JObject.Parse(content);
         if (json["base_resp"] != null && json["base_resp"]["status_code"].Value<int>() == 0)
         {
-            var fileUrl = json["audio_file"].Value<string>();
-            var file = await _client.GetByteArrayAsync(fileUrl);
-            var format = "mp3";
-            if (audioFormat != format)
+            if (json["data"] is not null && json["data"]["audio"] is not null)
             {
-                var random = new Random().Next(100000, 999999).ToString();
-                file = AudioService.ConvertAudioFormat(file, format, audioFormat, random);
-                format = audioFormat;
+                var audio = json["data"]["audio"].Value<string>();
+                if (!string.IsNullOrEmpty(audio))
+                {
+                    var bytes = StringToByteArray(audio);
+                    if (bytes.Length > 0)
+                    {
+                        var format = "mp3";
+                        if (audioFormat != format)
+                        {
+                            var random = new Random().Next(100000, 999999).ToString();
+                            bytes = AudioService.ConvertAudioFormat(bytes, format, audioFormat, random);
+                        }
+                        return FileResult.Answer(bytes, audioFormat, ResultType.AudioBytes, duration:json["extra_info"]["audio_length"].Value<int>());
+                    }
+                }
             }
-            return FileResult.Answer(file, audioFormat, ResultType.AudioBytes, duration:json["extra_info"]["audio_length"].Value<int>());
         }
-        else
-            return Result.Error(content);
+        return Result.Error(content);
     }
     
-    
-    private string MiniMaxGetT2AStreamMsg(ApiChatInputIntern input)
-    {
-        var voice = "male-qn-jingying-jingpin";
-        if (!string.IsNullOrEmpty(input.AudioVoice) && input.AudioVoice.StartsWith("minimax_"))
-            voice = input.AudioVoice.Remove(0, "minimax_".Length);
-        return JsonConvert.SerializeObject(new
-        {
-            model = "speech-01-hd",
-            text = input.ChatContexts.Contexts.Last().QC.Last().Content,
-            voice_setting = new
-            {
-                voice_id = voice,
-            },
-            audio_setting = new{
-                sample_rate = 16000,
-                bitrate = 32000,
-                format = string.IsNullOrEmpty(input.AudioFormat)?"mp3":input.AudioFormat
-            },
-            stream = true
-        });
-    }
-        
-    private static String t2aStreamUrl = "https://api.minimax.chat/v1/t2a_v2?GroupId=1692585515409561";
-
     /// <summary>
     /// MiniMax 文本转语音，流式返回语音片段
     /// </summary>
@@ -555,8 +549,8 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
     {
         var _client = _httpClientFactory.CreateClient();
         _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {APIKEY}");
-        var msg = MiniMaxGetT2AStreamMsg(input);
-        var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, t2aStreamUrl)
+        var msg = MiniMaxGetTTSMsg(input.ChatContexts.Contexts.Last().QC.Last().Content, input.AudioVoice, input.AudioFormat, true);
+        var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, ttsHostUrl+GroupId)
         {
             Content = new StringContent(msg, Encoding.UTF8, "application/json")
         }, HttpCompletionOption.ResponseHeadersRead);
@@ -608,7 +602,7 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
     }
     
-    private static String embedUrl = "https://api.minimax.chat/v1/embeddings?GroupId=1692585515409561";
+    private static String embedUrl = "https://api.minimax.chat/v1/embeddings?GroupId=";
     private string GetEmbeddingsMsgBody(List<ChatContext.ChatContextContent> qc, bool embedForQuery =  false)
     {
         var embeddings = qc.Select(t => t.Content).ToArray();
@@ -628,7 +622,7 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         var _client = _httpClientFactory.CreateClient();
         _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {APIKEY}");
         var msg = GetEmbeddingsMsgBody(qc, embedForQuery);
-        var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, embedUrl)
+        var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, embedUrl+GroupId)
         {
             Content = new StringContent(msg, Encoding.UTF8, "application/json")
         });

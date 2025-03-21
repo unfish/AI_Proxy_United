@@ -187,7 +187,8 @@
       "SecretKey": ""
     },
     "MiniMax": {
-      "Key":  ""
+      "Key":  "",
+      "GroupId": ""
     },
     "MoonShot": {
       "Key": ""

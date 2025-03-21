@@ -349,7 +349,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                 results.Add(Result.Answer(sb.ToString()));
             }
 
-            if (results.Count > 0)
+            if (results.Count > 1)
             {
                 yield return MultiMediaResult.Answer(results);
             }

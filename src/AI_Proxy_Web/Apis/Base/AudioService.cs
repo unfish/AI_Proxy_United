@@ -15,7 +15,7 @@ namespace AI_Proxy_Web.Apis.Base;
 public interface IAudioService
 {
     Task<Result> VoiceToText(byte[]  bytes, string fileName);
-    Task<Result> TextToVoice(string text, string voiceName, string audioFormat);
+    Task<Result> TextToVoice(string text, string voiceName, string audioFormat, string user_id = "");
 
     IAsyncEnumerable<Result> TextToVoiceStream(ApiChatInputIntern input);
 }
@@ -58,8 +58,11 @@ public class AudioService: IAudioService
         }
     }
     
-    public async Task<Result> TextToVoice(string text, string voiceName = "minimax_male-qn-jingying-jingpin", string audioFormat = "mp3")
+    public async Task<Result> TextToVoice(string text, string voiceName, string audioFormat = "mp3", string user_id = "")
     {
+        if (string.IsNullOrEmpty(voiceName))
+            voiceName = GetExtraOptions(user_id)[0].CurrentValue;
+        
         if (voiceName.StartsWith("minimax_"))
         {
             var mmax = _serviceProvider.GetRequiredService<MiniMaxClient>();
@@ -91,7 +94,7 @@ public class AudioService: IAudioService
     public async IAsyncEnumerable<Result> TextToVoiceStream(ApiChatInputIntern input)
     {
         if (string.IsNullOrEmpty(input.AudioVoice))
-            input.AudioVoice = "minimax_male-qn-jingying-jingpin";
+            input.AudioVoice = GetExtraOptions(input.External_UserId)[0].CurrentValue;
         if (input.AudioVoice.StartsWith("minimax_"))
         {
             var mmax = _serviceProvider.GetRequiredService<MiniMaxClient>();
