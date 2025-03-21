@@ -433,6 +433,7 @@ public class AutomationHelper
     {
         var page = _pages.Last();
         var html = await page.ContentAsync();
+        html = HtmlHelper.ExtractCoreDom(html, false);
         _lastActionTime = DateTime.Now;
         return html;
     }
