@@ -55,6 +55,7 @@ public abstract class BaseFeishuService: IBaseFeishuService
     private IFeishuRestClient _restClient;
     private ILogRepository _logRepository;
     private IHttpClientFactory _httpClientFactory;
+    private ConfigHelper _configHelper;
     protected string SiteHost;
     private static object lockObj = new object();
     public BaseFeishuService(IFeishuRestClient restClient, ILogRepository logRepository, ConfigHelper configHelper,
@@ -63,6 +64,7 @@ public abstract class BaseFeishuService: IBaseFeishuService
         _restClient = restClient;
         _logRepository = logRepository;
         _httpClientFactory = httpClientFactory;
+        _configHelper = configHelper;
         SiteHost = configHelper.GetConfig<string>("Site:Host");
     }
     
@@ -81,29 +83,23 @@ public abstract class BaseFeishuService: IBaseFeishuService
         var cacheKey =  TokenCacheKey;
         var token = CacheService.Get<string>(cacheKey);
         if (!string.IsNullOrWhiteSpace(token)) return token;
-        try
+            
+        var request = new RestRequest(TokenUrl, Method.Post);
+            
+        var appId =  AppId;
+        var appSecret =  AppSecret;
+        request.AddJsonBody(new { app_id = appId, app_secret = appSecret });
+        var response = _restClient.GetClient().Execute(request, Method.Post);
+        var o = JObject.Parse(response.Content);
+        if (o.Value<int>("code") == 0)
         {
-            var request = new RestRequest(TokenUrl, Method.Post);
-                
-            var appId =  AppId;
-            var appSecret =  AppSecret;
-            request.AddJsonBody(new { app_id = appId, app_secret = appSecret });
-            var response = _restClient.GetClient().Execute(request, Method.Post);
-            var o = JObject.Parse(response.Content);
-            if (o.Value<int>("code") == 0)
-            {
-                token = o.Value<string>("tenant_access_token");
-                var expire = o.Value<int>("expire");
-                CacheService.Save(cacheKey, token, Math.Max(expire - 100, 10));
-            }
-            else
-            {
-                Console.WriteLine($"FeiShuGptApiToken Error: {response.Content}");
-            }
+            token = o.Value<string>("tenant_access_token");
+            var expire = o.Value<int>("expire");
+            CacheService.Save(cacheKey, token, Math.Max(expire - 100, 10));
         }
-        catch (Exception ex)
+        else
         {
-            throw;
+            Console.WriteLine($"FeiShuGptApiToken Error: {response.Content}");
         }
 
         currentToken = token;
@@ -1804,6 +1800,12 @@ public abstract class BaseFeishuService: IBaseFeishuService
             {
                 var o = JObject.Parse(msg_content);
                 var text = o["text"].Value<string>();
+                if (text == "RELOAD CONFIG")
+                {
+                    _configHelper.ReloadConfig();
+                    SendMessage(user_id, "配置文件重新加载成功");
+                    return;
+                }
                 var parent_id = obj["event"]["message"]["parent_id"]==null?"": obj["event"]["message"]["parent_id"].Value<string>();
                 if (!string.IsNullOrEmpty(parent_id) && msg_id != parent_id) //引用的消息，把被引用的内容加进来
                 {
