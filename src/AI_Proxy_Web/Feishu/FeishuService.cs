@@ -1662,7 +1662,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
             {
                 QuestionContents =
                 ChatContext.NewContentList(ctx.Contexts.Last().AC.Last(t => t.Type == ChatType.文本).Content),
-                AudioFormat = "opus", IgnoreAutoContexts = true
+                AudioFormat = "opus", IgnoreAutoContexts = true, External_UserId = user_id, ContextCachePrefix = contextCachePrefix,
             });
             if (resp.resultType == ResultType.AudioBytes)
             {
