@@ -47,8 +47,8 @@ COPY fonts/* /usr/share/fonts
 RUN fc-cache -fv
 
 RUN apt-get -y update && apt-get -y upgrade && apt-get install -y --no-install-recommends supervisor \
-    	&& rm -rf /var/lib/apt/lists/* \
-    
+    	&& rm -rf /var/lib/apt/lists/*
+
 COPY --from=build-env /App/out .
 COPY wssclient/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN cd wssclient && npm install
