@@ -1,0 +1,15 @@
+{
+    "name": "feishu_bot",
+    "version": "1.0.0",
+    "main": "index.js",
+    "author": "cuizhen@yesmro.cn",
+    "license": "MIT",
+    "type": "module",
+    "scripts": {
+        "dev": "node index.js"
+    },
+    "dependencies": {
+        "@larksuiteoapi/node-sdk": "^1.40.0",
+        "axios": "^1.8.4"
+    }
+}
