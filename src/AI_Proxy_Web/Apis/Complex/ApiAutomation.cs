@@ -66,9 +66,8 @@ public class AutomationClient: IApiClient
  * You are using a "browser only system" with internet access, the webpage is full screen.
  * To open a new webpage, just call "OpenUrl" function and give it an url parameter. This should be your first action.
  * If webpage has a popup window, please close it first, or it may stop all actions.
- * If user need return screenshot of the webpage to him, call "Screenshot" function.
+ * If webpage need login with QRCode, stop and wait user scan the code to login. Wait until user ask to go on.
  * If you need back to previous page, call "GoBack" function.
- * If the webpage need login by QRCode, just call "Screenshot" function let user scan the QRCode.
  * If you need get full page html content, call "GetPageHtml" function, eg: get full article content, no need scroll and screenshot.
  * You can use bash and text_editor tools to run LINUX commands or edit local text file. Always use relative path. DO NOT recheck file content each time you write.
  * If user need you send edited File to him, call "SendFile" function. Always use relative path.
@@ -79,14 +78,14 @@ public class AutomationClient: IApiClient
  </SYSTEM_CAPABILITY>
 
  <IMPORTANT>
- * Try to chain multiple of these calls all into one function calls request.
+ * Try to chain multiple of these calls all into one function calls request, like click and type text.
  * Before any text input, ensure the target has focus.
  * This computer can NOT open google.com, youtube, twitter/x.com eg.
  </IMPORTANT>
 
- Do sames things together, like a series of text input or type key commands, dont wait comfirm or screenshot for each step.
+ Do sames things together, like a series of text input or type key commands, do not wait comfirm or screenshot for each step.
  Do not assume you did it correctly, use tools to verify.
- When asked to do something on the computer and if you don't have enough context, take a screenshot. Take a screenshot to know what the user is really looking at.
+ When asked to do something on the computer and if you don't have enough context, take a screenshot to know what the user is really looking at.
  If you are sure the current status is correct, you should stop or do next step, do not repeat action.
  After taking a screenshot, evaluate if you have achieved the desired outcome and to know what to do next and adapt your plan.
  Think step by step. Before you start, think about the steps you need to take to achieve the desired outcome.
@@ -116,6 +115,7 @@ public class AutomationClient: IApiClient
         input.DisplayHeight = 800;
 
         var times = 0; //计算循环次数，防止死循环
+        var autoStopTimes = 20; //需要自动中止的次数
         bool stopSign = false;
         while (true)
         {
@@ -142,11 +142,6 @@ public class AutomationClient: IApiClient
                         if(!ret)
                             call.Result= Result.Error("Error: Can't open this url, try another please.");
                         needRerun = true;
-                    }
-                    else if (call.Name == "Screenshot")
-                    {
-                        var bytes = await brower.Screenshot();
-                        yield return FileResult.Answer(bytes, "jpg", ResultType.ImageBytes, "screenshot.jpg");
                     }
                     else if (call.Name == "SendFile")
                     {  
@@ -176,6 +171,7 @@ public class AutomationClient: IApiClient
                         {
                             var bytes = await brower.Screenshot();
                             call.Result = FileResult.Answer(bytes, "jpg", ResultType.ImageBytes, "screenshot.jpg");
+                            yield return call.Result;
                         }else if (action == "mouse_move")
                         {
                             if (o["coordinate"] is not null)
@@ -314,8 +310,12 @@ public class AutomationClient: IApiClient
                 else
                     yield return res;
             }
-            if(!needRerun || times > 30)
+            if(!needRerun)
                 break;
+            if (times > autoStopTimes)
+            {
+                yield return Result.Answer("已达到自动操作步数上限，自动中止。");
+            }
         }
 
         input.IgnoreAutoContexts = true; //跟内层模型共享同一个input对象，内层模型已经保存过上下文了，外层不需要保存，不然会重复叠加上下文

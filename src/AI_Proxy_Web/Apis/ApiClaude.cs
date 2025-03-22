@@ -545,10 +545,6 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                 url = new{type="string", description="the full URL need to be opened."}
             }
         }});
-        tools.Add(new{name="Screenshot", description="Take screenshot of current webpage and return it to user.", input_schema=new
-        {
-            type="object", properties = new {}
-        }});
         tools.Add(new{name="GetPageHtml", description="Get full html content of current web page.", input_schema=new
         {
             type="object", properties = new {}
