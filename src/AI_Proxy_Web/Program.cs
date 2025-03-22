@@ -34,8 +34,11 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddHangfire(config =>
     config.UseInMemoryStorage().UseFilter(new AutomaticRetryAttribute() { Attempts = 2 })); //Hangfire如果因为异常重启，最多只重试一次
-builder.Services.AddHangfireServer();
-builder.Services.AddHangfireServer();
+builder.Services.AddHangfireServer(options =>
+{
+    // 设置并发数量
+    options.WorkerCount = 30;
+});
 
 var app = builder.Build();
 

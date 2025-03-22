@@ -46,6 +46,7 @@ RUN fc-cache -fv
 
 COPY --from=build-env /App/out .
 COPY wssclient/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY wssclient/index.js ./wssclient/
 RUN cd wssclient && npm install
 
 CMD ["/usr/bin/supervisord"]
