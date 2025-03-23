@@ -1108,7 +1108,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         if (sbReason.Length == 0)
             return sbAnswer.ToString();
         
-        var lines = sbReason.ToString().Split("\n\n");
+        var lines = sbReason.ToString().Split("\n\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var sb = new StringBuilder();
         foreach (var l in lines)
         {
