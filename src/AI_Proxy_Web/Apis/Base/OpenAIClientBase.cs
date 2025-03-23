@@ -161,11 +161,6 @@ public class OpenAIClientBase
         {
             prompt = "注意事项：" + string.Join("\n",
                 functions.Where(t => !string.IsNullOrEmpty(t.Prompt)).Select(t => t.Prompt));
-            if (prompt.IndexOf("{CURRENT_DATE}", StringComparison.Ordinal) >= 0)
-            {
-                var date = DateTime.Now.ToString("yyyy-MM-dd");
-                prompt = prompt.Replace("{CURRENT_DATE}", date);
-            }
         }
 
         return functions.Any()
@@ -183,6 +178,7 @@ public class OpenAIClientBase
         StringBuilder funcArgs = new StringBuilder();
         List<FunctionCall> functionCalls = new List<FunctionCall>();
         bool reasoning = false;
+        bool answering = false;
         using (var stream = await resp.Content.ReadAsStreamAsync())
         using (StreamReader reader = new StreamReader(stream))
         {
@@ -242,25 +238,45 @@ public class OpenAIClientBase
                             }
                             else if (tk["content"] != null && !string.IsNullOrEmpty(tk["content"].Value<string>()))
                             {
+                                var content = tk["content"].Value<string>();
                                 if (reasoning)
                                 {
-                                    reasoning = false;
-                                    yield return Result.Reasoning("\n\n");
+                                    if (content.IndexOf("</think>", StringComparison.Ordinal) >= 0)
+                                    {
+                                        reasoning = false;
+                                        var reason = content.Substring(0, content.IndexOf("</think>", StringComparison.Ordinal));
+                                        yield return Result.Reasoning(reason);
+                                        if (content.Length > reason.Length + "</think>".Length)
+                                        {
+                                            var answer = content.Substring(reason.Length + "</think>".Length).Trim();
+                                            if (answer.Length > 0)
+                                                yield return Result.Answer(answer);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        yield return Result.Reasoning(content);
+                                    }
                                 }
-                                yield return Result.Answer(tk["content"].Value<string>());
+                                else
+                                {
+                                    if (!answering && content.IndexOf("<think>", StringComparison.Ordinal) >= 0 && content.IndexOf("</think>", StringComparison.Ordinal) < 0)
+                                    {
+                                        reasoning = true;
+                                        var reason = content.Substring(
+                                            content.IndexOf("<think>", StringComparison.Ordinal) + "<think>".Length);
+                                        yield return Result.Reasoning(reason);
+                                    }
+                                    else
+                                    {
+                                        answering = true;
+                                        yield return Result.Answer(content);
+                                    }
+                                }
                             }
                             else if (tk["reasoning_content"] != null && !string.IsNullOrEmpty(tk["reasoning_content"].Value<string>()))
                             {
-                                if (!reasoning)
-                                {
-                                    reasoning = true;
-                                    yield return Result.Reasoning("> ");
-                                }
                                 var reason = tk["reasoning_content"].Value<string>();
-                                if (reason.Contains("\n\n"))
-                                {
-                                    reason = reason.Replace("\n\n", "\n\n> ");
-                                }
                                 yield return Result.Reasoning(reason);
                             }
                         }
@@ -323,6 +339,7 @@ public class OpenAIClientBase
         string funcArgs = "";
         List<FunctionCall> functionCalls = new List<FunctionCall>();
         bool reasoning = false;
+        bool answering = false;
         using (var stream = await resp.Content.ReadAsStreamAsync())
         using (StreamReader reader = new StreamReader(stream))
         {
@@ -363,13 +380,43 @@ public class OpenAIClientBase
                     var type = res["type"].Value<string>();
                     if (type == "response.output_text.delta")
                     {
+                        var content = res["delta"].Value<string>();
                         if (reasoning)
                         {
-                            reasoning = false;
-                            yield return Result.Reasoning("\n\n");
+                            if (content.IndexOf("</think>", StringComparison.Ordinal) >= 0)
+                            {
+                                reasoning = false;
+                                var reason = content.Substring(0,
+                                    content.IndexOf("</think>", StringComparison.Ordinal));
+                                yield return Result.Reasoning(reason);
+                                if (content.Length > reason.Length + "</think>".Length)
+                                {
+                                    var answer = content.Substring(reason.Length + "</think>".Length).Trim();
+                                    if (answer.Length > 0)
+                                        yield return Result.Answer(answer);
+                                }
+                            }
+                            else
+                            {
+                                yield return Result.Reasoning(content);
+                            }
                         }
-
-                        yield return Result.Answer(res["delta"].Value<string>());
+                        else
+                        {
+                            if (!answering && content.IndexOf("<think>", StringComparison.Ordinal) >= 0 &&
+                                content.IndexOf("</think>", StringComparison.Ordinal) < 0)
+                            {
+                                reasoning = true;
+                                var reason = content.Substring(
+                                    content.IndexOf("<think>", StringComparison.Ordinal) + "</think>".Length);
+                                yield return Result.Reasoning(reason);
+                            }
+                            else
+                            {
+                                answering = true;
+                                yield return Result.Answer(content);
+                            }
+                        }
                     }
                     else if (type == "response.output_item.added")
                     {

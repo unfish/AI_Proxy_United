@@ -916,33 +916,41 @@ public class FeishuService: BaseFeishuService, IFeishuService
             External_UserId = user_id, AudioFormat = "opus", WithFunctions = no_function ? new[] { "NoFunction" } : null
         };
 
-        var sb = new StringBuilder();
+        var sbAnswer = new StringBuilder();
+        var sbReason = new StringBuilder();
         var _api = _apiFactory.GetService(input.ChatModel);
         var sender = new FeishuMessageSender(this, user_id);
         sender.Start();
         await foreach (var res in _api.ProcessChat(input))
         {
-            ProcessResponseResult(sender, user_id, res, sb);
+            ProcessResponseResult(sender, user_id, res, sbAnswer, sbReason);
         }
         sender.Finish();
         sender.Wait();
     }
 
-    private void ProcessResponseResult(FeishuMessageSender sender, string user_id, Result res, StringBuilder sb)
+    private void ProcessResponseResult(FeishuMessageSender sender, string user_id, Result res, StringBuilder sbAnswer, StringBuilder sbReason)
     {
-        if (res.resultType == ResultType.Answer || res.resultType == ResultType.Reasoning)
+        if (res.resultType == ResultType.Reasoning)
         {
-            sb.Append(res.ToString());
-            sender.AddData(sb.ToString());
+            sbReason.Append(res.ToString());
+            sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer));
+        }
+        else if (res.resultType == ResultType.Answer)
+        {
+            sbAnswer.Append(res.ToString());
+            sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer));
         }
         else if (res.resultType == ResultType.AnswerStarted)
         {
-            sb.Clear();
+            sbReason.Clear();
+            sbAnswer.Clear();
         }
         else if (res.resultType == ResultType.AnswerFinished)
         {
-            sender.Flush(sb.ToString());
-            sb.Clear();
+            sender.Flush(ProcessReasoningFormat(sbReason, sbAnswer));
+            sbReason.Clear();
+            sbAnswer.Clear();
         }
         else if (res.resultType == ResultType.Error)
         {
@@ -950,20 +958,22 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (res.resultType == ResultType.FuncFrontend)
         {
+            if(sbReason.Length>0||sbAnswer.Length>0) sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer), true);
             ProcessFuncFrontendMessage(user_id, res);
         }
         else if (res.resultType == ResultType.FuncStart)
         {
             var call = ((FunctionStartResult)res).result;
-            sender.AddData($"调用外部工具: {call.Name}, 参数：{call.Arguments}");
+            sender.AddData($"调用外部工具: {call.Name}, 参数：{call.Arguments}", true);
         }
-        else if (res.resultType == ResultType.Waiting)
+        else if (res.resultType == ResultType.Waiting) //开启一个新卡片
         {
-            if (sb.Length > 0)
+            if (sbReason.Length>0||sbAnswer.Length>0)
             {
+                sender.Flush(ProcessReasoningFormat(sbReason, sbAnswer));
                 sender = new FeishuMessageSender(this, user_id);
                 sender.Start();
-                sb.Clear();
+                sbAnswer.Clear();
             }
             if (int.TryParse(((StringResult)res).result, out var times))
             {
@@ -976,6 +986,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (res.resultType == ResultType.ImageBytes)
         {
+            if(sbReason.Length>0||sbAnswer.Length>0) sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer), true);
             var image_key = UploadImageToFeishu(((FileResult) res).result);
             if (!string.IsNullOrEmpty(image_key))
             {
@@ -984,6 +995,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (res.resultType == ResultType.AudioBytes)
         {
+            if(sbReason.Length>0||sbAnswer.Length>0) sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer), true);
             var file = ((FileResult) res).result;
             var file_key = UploadFileToFeishu(file, "audio.opus", ((FileResult) res).duration);
             if (!string.IsNullOrEmpty(file_key))
@@ -993,6 +1005,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (res.resultType == ResultType.VideoBytes)
         {
+            if(sbReason.Length>0||sbAnswer.Length>0) sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer), true);
             var vs = (VideoFileResult) res;
             var file_key = UploadFileToFeishu(vs.result, vs.fileName, vs.duration);
             if (vs.cover_image == null)
@@ -1019,6 +1032,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (res.resultType == ResultType.FileBytes)
         {
+            if(sbReason.Length>0||sbAnswer.Length>0) sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer), true);
             var file = ((FileResult) res).result;
             var file_key = UploadFileToFeishu(file, ((FileResult) res).fileName);
             if (!string.IsNullOrEmpty(file_key))
@@ -1039,7 +1053,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
             var list = ((GoogleSearchResult)res).result;
             if (list.Count == 0)
             {
-                sb.Append("没有搜索到相关内容");
+                sbAnswer.Append("没有搜索到相关内容");
                 return;
             }
 
@@ -1051,8 +1065,8 @@ public class FeishuService: BaseFeishuService, IFeishuService
                 arts.Append("\n");
             }
 
-            sb.Append(arts);
-            SendMessage(user_id, sb.ToString());
+            sbAnswer.Append(arts);
+            SendMessage(user_id, sbAnswer.ToString());
         }
         else if (res.resultType == ResultType.FollowUp)
         {
@@ -1061,6 +1075,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else if (res.resultType == ResultType.LogSaved)
         {
+            if(sbReason.Length>0||sbAnswer.Length>0) sender.AddData(ProcessReasoningFormat(sbReason, sbAnswer), true);
             var log = ((LogSavedResult)res).result;
             var content = log.Content;
             if (content.Contains("```mermaid"))
@@ -1088,6 +1103,28 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
     }
 
+    private string ProcessReasoningFormat(StringBuilder sbReason, StringBuilder sbAnswer)
+    {
+        if (sbReason.Length == 0)
+            return sbAnswer.ToString();
+        
+        var lines = sbReason.ToString().Split("\n\n");
+        var sb = new StringBuilder();
+        foreach (var l in lines)
+        {
+            if (!l.StartsWith(">"))
+                sb.Append(">");
+            sb.Append(l);
+            sb.Append("\n\n");
+        }
+        if (sbAnswer.Length == 0)
+        {
+            sb.Remove(sb.Length - 2, 2);
+            return sb.ToString();
+        }
+
+        return sb.ToString() + sbAnswer.ToString();
+    }
     
     private void ProcessFuncFrontendMessage(string user_id, Result res)
     {

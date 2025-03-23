@@ -135,7 +135,7 @@ public class AutomationClient: IApiClient
                     var call = fr.result;
                     if (call.Name == "OpenUrl")
                     {
-                        yield return Result.Reasoning($">call {call.Name}({call.Arguments})\n\n");
+                        yield return Result.Reasoning($"call {call.Name}({call.Arguments})\n\n");
                         var o = JObject.Parse(call.Arguments);
                         var url = o["url"].Value<string>();
                         var ret = await brower.OpenUrl(url);
@@ -164,7 +164,7 @@ public class AutomationClient: IApiClient
                         needRerun = true;
                     }else if (call.Name == "computer")
                     {
-                        yield return Result.Reasoning($">call computer_use({call.Arguments})\n\n");
+                        yield return Result.Reasoning($"call computer_use({call.Arguments})\n\n");
                         var o =  JObject.Parse(call.Arguments);
                         var action = o["action"].Value<string>();
                         if (action == "screenshot")
@@ -215,7 +215,7 @@ public class AutomationClient: IApiClient
                         needRerun = true;
                     }else if (call.Name == "str_replace_editor")
                     {
-                        yield return Result.Reasoning($">call text_editor()\n\n");
+                        yield return Result.Reasoning($"call text_editor()\n\n");
                         var o = JObject.Parse(call.Arguments);
                         var path =  o["path"].Value<string>();
                         var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "auto_files/"+input.External_UserId + "/",
@@ -271,7 +271,7 @@ public class AutomationClient: IApiClient
                         needRerun = true;
                     }else if (call.Name == "bash")
                     {
-                        yield return Result.Reasoning($">call bash({call.Arguments})\n\n");
+                        yield return Result.Reasoning($"call bash({call.Arguments})\n\n");
                         var o =  JObject.Parse(call.Arguments);
                         var command = o["command"].Value<string>();
                         // 创建一个 ProcessStartInfo 对象

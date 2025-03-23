@@ -110,7 +110,7 @@ public class ApiSearchAndSummarize:ApiBase
                     var sb = new StringBuilder();
                     var waitMsgs = new StringBuilder();
                     var q = input.ChatContexts.Contexts.Last().QC.First().Content;
-                    waitMsgs.AppendLine($"\n>正在阅读关于{q}的网页资料：");
+                    waitMsgs.AppendLine($"正在阅读关于{q}的网页资料：");
                     sb.AppendLine("请根据以下参考资料，回答该问题：" +
                                   input.ChatContexts.Contexts.Last().QC.Last().Content);
                     sb.AppendLine("<refers>");
@@ -172,7 +172,7 @@ public class ApiSearchAndSummarize:ApiBase
 
 /// <summary>
 /// GoogleSearch接口
-/// 文档地址 https://developers.google.com/custom-search/v1/overview?hl=zh-cn
+/// 文档地址 https://ohmygpt-docs.apifox.cn/api-141553709
 /// </summary>
 public class GoogleSearchClient:OpenAIClientBase, IApiClient
 {
@@ -199,6 +199,7 @@ public class GoogleSearchClient:OpenAIClientBase, IApiClient
         try
         {
             HttpClient client = _httpClientFactory.CreateClient();
+            //client.DefaultRequestHeaders.Add("Authorization",$"Bearer {APIKEY}");
             var url = hostUrl + "?q=" + HttpUtility.UrlEncode(input.ChatContexts.Contexts.Last().QC.First().Content) +
                       "&num=6&key=" + APIKEY + "&cx=" + cx;
             var resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, url));
