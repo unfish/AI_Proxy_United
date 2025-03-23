@@ -36,38 +36,65 @@ https://github.com/user-attachments/assets/de664d6f-b5cf-42ed-979e-e5a394b31596
 
 
 #### 项目部署方式：
-一定要有Docker！
+- 一定要有Docker！
+- 要有一台能编译和运行Docker镜像的服务器，并且有域名能够被外网正常访问。使用二阶段编译，除了docker不依赖任何编译环境。
+- 自己要有各家大模型公司的账号，以及可正常访问其服务器的方式。（走其它聚合API接口也可以，建议直接将Docker部署在海外的服务器上，或者使用nginx自建海外的转发服务器。）
+- 有一个已经创建好的飞书机器人，并开通了所需要的权限和订阅了相关的事件。（没有的话可以新创建一个。所需要的权限列表在readme目录下的permissions.json里，可以在机器人的权限管理中直接通过导入方式批量开通。在事件配置里订阅两个事件：im.message.receive_v1，application.bot.menu_v6，在回调配置里订阅一个事件：card.action.trigger。）
 
-要有一台能编译和运行Docker镜像的服务器，并且有域名能够被外网正常访问。使用二阶段编译，除了docker不依赖任何编译环境。
+**快速部署一个测试环境：**
 
-本项目运行需要一个Mysql和一个Redis，有专用的最好，没有的话在本机用Docker启动两个也可以，只要项目能连的上就行。（Redis是存储上下文的，如果Redis重启丢数据那当前的上下文就丢了。）
+1. git clone项目到本地或有docker的服务器上。
+2. 把项目目录下config.example.json文件复制成config.json文件，修改FeiShu-Main下面的AppId和Secret为飞书机器人的信息，至少设置一家大模型的Key（国内大模型都非常容易申请），ModelUsed里只保留这个模型，其它的删掉。
+3. 通过以下方式在本机启动一套mysql和redis的临时环境（该命令都没有目录映射和持久化参数，重启会丢失数据，但用来临时体验一下系统没有问题。）
+```bash
+docker network create my-bridge
+docker run --name mysql --net my-bridge -p 3306:3306 -e MYSQL_ROOT_PASSWORD=pwd -d mysql
+docker run --name redis -p 6379:6379 --net my-bridge -d redis
+```
+4. 修改config.json里面的Connection里面的DB的连接字符串为：server=mysql;port=3306;database=mydb;uid=root;pwd=pwd;SslMode=none，Redis的连接字符串为 redis:6379
+5. 编译并运行容器
+```bash
+sh buildwebsocket.sh
+docker run --name ai_proxy -p 8080:8080 --net my-bridge -d ai_proxy
+```
+6. 进到飞书机器人管理后台，事件与回调，事件配置和回调配置两个页面，都设成使用长连接接收事件，然后机器人需要发布一下生效。
+7. 这时候在飞书里跟机器人私聊，应该就可以返回AI的回复了。
 
-Mysql最好也能远程连接或者有其它管理界面，因为提示词模板和Function定义需要手动添加到这两个表里去，我没有做管理工具。
+**部署一个完整的生产环境：**
 
-自己要有各家大模型公司的账号，以及可正常访问其服务器的方式。（走其它聚合API接口也可以，但不保证好用。建议直接将Docker部署在海外的服务器上，或者使用nginx自建海外的转发服务器。）
-
-1. git clone 项目
-2. git checkout -b xxx  #创建一个新的分支
-3. 在这个新分支下修改配置文件，也可以修改代码来满足自己的需求。也可以提交自己的文件push到自己的Git服务器。当我更新了主项目的时候你只要拉一下项目，然后把master分支往自己的分支合并一下就行了，就可以既保持主项目同步，又能管理自己的文件。
-- 要有一个飞书机器人，并申请了所必须的权限，没有的话可以新创建一个。所需要的权限列表在readme目录下的permissions.json里，可以在权限管理中直接导入批量开通。
-- 把config.example.json文件复制成config.json文件，修改其中的所有关键信息。
-- 改完以后运行builddocker.sh脚本编译并打包docker镜像。(3月22日增加使用websocket接收飞书消息的容器配置，运行buildwebsocket.sh脚本来编译并打包docker镜像，即可省去飞书里的回调配置，并且容器不需要公开任何端口或网址即可使用飞书功能，即使容器运行在自己家里的个人电脑上也没问题。不过要是想使用多功能查看日志的话还是需要设置一个可访问的网址的。）
-- 如果需要在别的地方运行，把image push过去，如果在本地运行，docker run -p 8080:8080 就可以体验一下了。(如果mysql和redis也运行在本地容器里，并且使用容器名字作为连接字符串，别忘了加上--link mysql:mysql --link redis:redis 参数或者建立统一网络。）
-- 把这个端口用任何方式映射到外网可访问，去配置飞书机器人的消息通知地址。在飞书开放平台机器人管理界面，事件与回调，事件配置和回调配置两个页面的请求地址都是 https://你的访问域名/api/ai/feishu/event  （如果使用websocket配置，这两个页面里都设成使用长连接接收事件即可。）
-- 在事件配置里订阅两个事件：im.message.receive_v1，application.bot.menu_v6，在回调配置里订阅一个事件：card.action.trigger。
-4. 给飞书配置几个菜单，建议使用悬浮式菜单。至少需要一个『新会话』按钮，事件名称是menu_startnewcontext，一个切换模型的按钮，事件名称是menu_to_all，也可以将几个指定模型设为快捷菜单来快速切换，事件名称是menu_to_x 把x换成这个模型的枚举值对应的数字即可。
+1. git clone项目到本地或有docker的服务器上。
+2. 把项目目录下config.example.json文件复制成config.json文件，修改FeiShu-Main下面的AppId和Secret为飞书机器人的信息，配置好所有可用的大模型的Key，以及服务器地址，ModelUsed里删除不可用的模型（一些Agent类模型的依赖关系在下面）。
+3. 准备好mysql和redis的可用的生产环境，有云服务最好，没有的话可以自己用容器启动，但mysql要注意使用目录映射功能防止数据丢失。
+4. 修改config.json里面的Connection里面的DB和Redis的连接字符串。修改Site中的Host为将来能够访问这个容器的域名，比如http://域名:8080/  MasterToken输入一个随机生成的一个长字符串，可以通过该Token请求本项目的API接口调用AI功能。
+5. 编译并运行容器
+```bash
+sh buildwebsocket.sh
+docker run --name ai_proxy -p 8080:8080 -d ai_proxy
+```
+6. 配置防火墙端口或负载均衡映射等等可以通过上面的域名访问到该容器。
+7. 进到飞书机器人管理后台，事件与回调，事件配置和回调配置两个页面，都设成使用长连接接收事件，然后机器人需要发布一下生效。
+8. 这时候在飞书里跟机器人私聊，应该就可以返回AI的回复了。
+9. 给飞书配置几个菜单，建议使用悬浮式菜单。至少需要一个『新会话』按钮，事件名称是menu_startnewcontext，一个切换模型的按钮，事件名称是menu_to_all。readme目录下有一个menu_suggest.xlsx文件里有推荐使用的菜单配置的完整说明。
 
 以下两步不是必须的：
-5. 然后需要往chatgptprompts，然后给飞书菜单上再配一个提示词模板的按钮，可以将一些COT之类的复杂提示词变成一个按钮，用户点一下再输入自己的简单问题就可以了。当然不配置模板也不影响使用。
-6. 需要往chatgptfunctions里添加几个Function定义，这样内置的Function才会起作用。你也可以尝试调整Function的描述和触发词，但方法名和参数名不要改。
-   
+
+10. 然后需要往chatgptprompts，然后给飞书菜单上再配一个提示词模板的按钮，可以将一些COT之类的复杂提示词变成一个按钮，用户点一下再输入自己的简单问题就可以了。当然不配置模板也不影响使用。
+11. 需要往chatgptfunctions里添加几个Function定义，这样内置的Function才会起作用。你也可以尝试调整Function的描述和触发词，但方法名和参数名不要改。
+
 （在readme目录下有两个excel文件，和两个.sql文件，你可以用Mysql命令行直接将.sql文件导进去，也可以自己看情况添加其它提示词模板。另外有个建议的菜单配置文件menu_suggest.xlsx可以作为参考。）
 
-如果你不想使用容器，它也是可以直接运行的，但对服务器环境可能有些要求。
+**如果你不想使用容器：**
 1. 推荐使用Ubuntu 22，需要在服务器上安装.Net 8 SDK，参考 https://learn.microsoft.com/zh-cn/dotnet/core/install/linux?WT.mc_id=dotnet-35129-website
 2. 如果要使用完整的高级功能，使用Dockerfile里的安装命令，安装google-chrome-stable，ffmpeg，解压安装 chromedriver_linux64.zip ，中文字体fonts-arphic-uming，npm, 以及通过npx安装 playwright，复制fonts/*文件，刷新字体缓存。
-3. 这些装完以后，可以直接在项目目录下运行命令dotnet run，就可以以debug模式启动项目，使用 5141 端口。如果不使用浏览器控制、服务器端生成PDF、SVG功能、文字转语音播放的话，服务器上可以什么都不用装，直接在程序目录下运行dotnet run就行。
-4. 运行 dotnet publish --property WarningLevel=0 -c Release -o bin/out，再把config.json复制到bin/out目录，然后cd进入bin/out，运行 dotnet AI_Proxy_Web.dll 就可以以生产模式运行。如果要以后台模式运行，后面加上 & 就可以了。不然退出终端的时候程序就被退出了。
+3. 如果不使用浏览器控制、服务器端生成PDF、SVG功能、文字转语音播放的话，上面这些可以都不用装。
+4. 运行 dotnet publish --property WarningLevel=0 -c Release -o bin/out，再把config.json复制到bin/out目录，然后cd进入bin/out，运行 dotnet AI_Proxy_Web.dll 就可以以生产模式运行，运行端口是8080。如果要以后台模式运行，后面加上 & 就可以了。不然退出终端的时候程序就被退出了。
+5. 如果飞书机器人的事件回调使用长连接方式，需要进入项目目录下的wssclient目录，运行 npm install，再运行npm run dev就可以了。如果使用推送方式，配置推送地址为该服务器的访问地址，比如http://域名:8080/api/ai/feishu/event
+
+**如果你想在本项目基础上开发新功能，比如对接自己公司的业务系统：**
+1. git clone项目以后，建一个新的分支，并在新分支下修改代码和部署项目。
+2. 如果本项目代码更新了，只要拉一下代码，并把master分支向自己的分支合并一下代码就可以了。
+
+本项目的设计能够尽量让你在不修改原有文件的基础上增加新功能，比如新的模型，或新的Function Call功能。
 
 #### 配置文件说明
 
@@ -110,9 +137,9 @@ Mysql最好也能远程连接或者有其它管理界面，因为提示词模板
 ```
 后面就是各个模型的地址和Key等等，看情况配置，没有配置Key的，上面也不要加为可用。
 
-建议至少配置：
-- MiniMax+GoogleSearch，才能使用深度搜索功能（该功能会用到JinaAI，但Jina不需要Key，是免费服务）。
-- 配置Claude，才能使用浏览器控制功能。
+**建议的模型配置：**
+- MiniMax+GoogleSearch，才能使用深度搜索功能（ModelUsed中启用DeepSearch。该功能会用到JinaAI，但Jina不需要Key，是免费服务）。
+- 配置Claude，才能使用浏览器控制功能。（ModelUsed中启用Automation）
 - 配置Gemini，才能使用长文阅读和连续对话画图功能。（Gemini和GoogleSearch只要你不绑定付款方式，就可以免费使用。）
 
 MiniMax和Gemini是目前唯二的真正可以使用百万上下文输入API的大模型，阅读整本书，或者调用搜索同时阅读10篇完整网页并提取摘要都不在话下，而且价格都很便宜。
