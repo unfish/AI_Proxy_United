@@ -41,7 +41,7 @@ public class OneAgentClient: IApiClient
     {
         _apiFactory = apiFactory;
     }
-    private int modelId = (int)M.GPT_o3Mini;
+    private int modelId = (int)M.ClaudeThinking;
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
@@ -51,7 +51,8 @@ public class OneAgentClient: IApiClient
         {
             var question = "当你接收到用户的需求，请认真分析用户的目的及深层需求，并列出所有该任务需要用户明确的需求点，例如调研的方向、研究范围、边界、明确的目标市场或目标客户群等等，等用户回答完以后再开始解决问题。先向用户展示你准备采取的工作步骤，然后自动开始执行。\n" +
                            "解决问题请调用万能助理来实际完成任务，通过拆解任务并编排多个助理来高质量的完成该任务。对每一个助理生成的任务指令需要尽量详细描述、逻辑清晰。\n" +
-                           "每个助理任务完成之后你需要根据所有已知结果重新审视工作流程并合理的调整后续任务，必要时可以多次重复调用同一个助手，但需要分配不同的角色名称给它，以便后续任务能够正确的获取对应角色的任务执行结果作为自己的输入。";
+                           "每个助理任务完成之后你需要根据所有已知结果重新审视工作流程并合理的调整后续任务，必要时可以多次重复调用同一个助手，但需要分配不同的角色名称给它，以便后续任务能够正确的获取对应角色的任务执行结果作为自己的输入。\n" +
+                           "按如下方式执行任务：先拆解任务步骤，并调用助理功能将任务明细写入todo.md文件。然后再按步骤执行，每一步骤分别调用合适的助理功能来进行。在每一步助理完成并返回结果以后，再调用一次助理将上一步的结果更新到todo.md文件里对应的位置。所有任务完成以后，再调用助理将任务发给用户。";
             input.ChatContexts.AddQuestion(question, ChatType.System);
         }
         await foreach (var res in api.ProcessChat(input))
