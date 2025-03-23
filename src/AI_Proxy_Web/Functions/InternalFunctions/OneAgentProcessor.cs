@@ -82,7 +82,7 @@ public class OneAgentProcessor: BaseProcessor
             yield break;
         }
 
-        yield return Result.Reasoning($">**助理 {input.Agent.Role} 开始工作，使用模型 {attr.Name}**\n");
+        yield return Result.Reasoning($"**助理 {input.Agent.Role} 开始工作，使用模型 {attr.Name}**\n\n");
         var sb = new StringBuilder();
         var searchApi = _apiFactory.GetService(info.Model);
         await foreach (var res in searchApi.ProcessChat(input))

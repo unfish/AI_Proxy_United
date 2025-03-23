@@ -9,7 +9,7 @@ public class ImageHelper
     /// <summary>
     /// 压缩图片
     /// </summary>
-    public static byte[] Compress(byte[] file, SKSize? size = null)
+    public static byte[] Compress(byte[] file, SKSize? size = null, SKEncodedImageFormat  format = SKEncodedImageFormat.Jpeg)
     {
         using (var bitmap = SKBitmap.Decode(file))
         {
@@ -42,9 +42,9 @@ public class ImageHelper
             if (width > toWidth || height > toHeight)
             {
                 var newBitmap = bitmap.Resize(new SKSizeI(toWidth, toHeight), SKFilterQuality.High);
-                return newBitmap.Encode(SKEncodedImageFormat.Jpeg, 100).ToArray();
+                return newBitmap.Encode(format, 100).ToArray();
             }
-            return bitmap.Encode(SKEncodedImageFormat.Jpeg, 100).ToArray();
+            return bitmap.Encode(format, 100).ToArray();
         }
     }
     

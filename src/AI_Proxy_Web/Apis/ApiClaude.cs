@@ -490,7 +490,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                         if (call.Result?.resultType == ResultType.ImageBytes)
                         {
                             index++;
-                            if(index > totalImages-3){
+                            if(index > totalImages-2){
                                 var result = (FileResult)call.Result;
                                 contents.Add(new ToolResponse()
                                 {
@@ -502,7 +502,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                                             source = new
                                             {
                                                 type = "base64",
-                                                media_type = "image/jpeg",
+                                                media_type = result.fileExt == "png" ? "image/png" : "image/jpeg",
                                                 data = result.ToString()
                                             }
                                         }

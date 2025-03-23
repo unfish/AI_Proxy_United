@@ -40,6 +40,7 @@ public class FunctionCall
     [JsonProperty("resultStr")]
     public string ResultStr { get; set; }
     
+    [JsonProperty(TypeNameHandling = TypeNameHandling.Auto)]
     private Result? _result { get; set; }
     
     /// <summary>
@@ -51,14 +52,14 @@ public class FunctionCall
         {
             if (_result == null && !string.IsNullOrEmpty(ResultStr))
             {
-                _result = JsonConvert.DeserializeObject<Result>(ResultStr, new ResultJsonConverter());
+                _result = JsonConvert.DeserializeObject<Result>(ResultStr);
             }
             return _result;
         }
         set
         {
             _result = value;
-            ResultStr = JsonConvert.SerializeObject(value);
+            ResultStr = JsonConvert.SerializeObject(_result);
         } 
     }
     
@@ -67,34 +68,4 @@ public class FunctionCall
     /// </summary>
     [JsonIgnore]
     public string? Prompt { get; set; }
-}
-
-
-public class ResultJsonConverter : JsonConverter
-{
-    public override bool CanConvert(Type objectType) => objectType == typeof(Result);
-    public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
-    {
-        JObject? jobj = serializer.Deserialize<JObject>(reader);
-        var tp = (ResultType)jobj["resultType"].Value<int>();
-        object? o;
-        if (tp == ResultType.Answer|| tp == ResultType.Error)
-        {
-            o =  Result.New(tp, jobj["result"].Value<string>());  
-        }
-        else if (tp == ResultType.ImageBytes)
-        {
-            o =  FileResult.Answer(Convert.FromBase64String(jobj["result"].Value<string>()), "", ResultType.ImageBytes);
-        }
-        else
-        {
-            throw new NotImplementedException();
-        }
-        return o;
-    }
-    public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
-    {
-        string s = JsonConvert.SerializeObject(value);
-        writer.WriteValue(s);   
-    }
 }

@@ -170,7 +170,7 @@ public class AutomationClient: IApiClient
                         if (action == "screenshot")
                         {
                             var bytes = await brower.Screenshot();
-                            call.Result = FileResult.Answer(bytes, "jpg", ResultType.ImageBytes, "screenshot.jpg");
+                            call.Result = FileResult.Answer(bytes, "png", ResultType.ImageBytes, "screenshot.png");
                             yield return call.Result;
                         }else if (action == "mouse_move")
                         {
@@ -394,13 +394,7 @@ public class AutomationHelper
         }
     }
 
-    public async Task ClosePage()
-    {
-        await CloseAllPages();
-        _lastActionTime = DateTime.Now;
-    }
-
-    public async Task Release()
+    private async Task Release()
     {
         await CloseAllPages();
         await _context.CloseAsync();
@@ -426,7 +420,7 @@ public class AutomationHelper
         _lastActionTime = DateTime.Now;
         var page = _pages.Last();
         var bytes = await page.ScreenshotAsync();
-        return ImageHelper.Compress(bytes, new SKSize(_pageWidth,  _pageHeight));
+        return ImageHelper.Compress(bytes, new SKSize(_pageWidth,  _pageHeight), SKEncodedImageFormat.Png);
     }
 
     public async Task<string> GetHtml()
