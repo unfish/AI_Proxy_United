@@ -515,7 +515,7 @@ public class ZhiPuClient: OpenAIClientBase, IApiClient
         var o = JObject.Parse(result);
         if (o["choices"] != null)
         {
-            var list = new List<GoogleSearchResultDto>();
+            var list = new List<SearchResultDto>();
             var arr = o["choices"][0]["message"]["tool_calls"] as JArray;
             foreach (var tk in arr)
             {
@@ -524,7 +524,7 @@ public class ZhiPuClient: OpenAIClientBase, IApiClient
                     var search_results = tk["search_result"] as JArray;
                     foreach (var hit in search_results)
                     {
-                        var dto = new GoogleSearchResultDto()
+                        var dto = new SearchResultDto()
                         {
                             title = hit["title"].Value<string>(),
                             url = hit["link"].Value<string>(),
@@ -532,7 +532,7 @@ public class ZhiPuClient: OpenAIClientBase, IApiClient
                         };
                         list.Add(dto);
                     }
-                    return GoogleSearchResult.Answer(list);
+                    return SearchResult.Answer(list);
                 }
             }
         }

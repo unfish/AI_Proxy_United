@@ -1,12 +1,13 @@
 using System.Collections.Concurrent;
 using System.Text;
 using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Helpers;
 using AI_Proxy_Web.Models;
 using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.OneAgent, "万能助理", "提出一个复杂任务，由模型进行任务分解，并自动进行任务编排，进行多模型调度，合作共同完成复杂任务，比如市场调研+写方案，客户需求分析+方案+代码，调用浏览器查询资料并生成文件导出数据等等。更多功能有待挖掘。", 197, type: ApiClassTypeEnum.辅助模型, canUseFunction:true, priceIn: 0, priceOut: 0.1)]
+[ApiClass(M.OneAgent, "万能助理", "提出一个复杂任务，由模型进行任务分解，并自动进行任务编排，进行多模型调度，合作共同完成复杂任务，比如市场调研+写方案，客户需求分析+方案+代码，调用浏览器查询资料并生成文件导出数据等等。更多功能有待挖掘。", 197, type: ApiClassTypeEnum.辅助模型, canProcessImage:true,canProcessFile:true, priceIn: 0, priceOut: 0.1)]
 public class ApiOneAgent:ApiBase
 {
     private IServiceProvider _serviceProvider;
@@ -45,6 +46,7 @@ public class OneAgentClient: IApiClient
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
+        input.ChatModel = modelId;
         var api = _apiFactory.GetService(modelId);
         bool isFirstChat = input.ChatContexts.Contexts.Count==1;
         if (isFirstChat) //首次进入增加系统指令

@@ -45,6 +45,7 @@ public class DeepSearchClient: IApiClient
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
+        input.ChatModel = modelId;
         var api = _apiFactory.GetService(modelId);
         bool isFirstChat = input.ChatContexts.Contexts.Count==1;
         if (isFirstChat) //首次进入增加系统指令

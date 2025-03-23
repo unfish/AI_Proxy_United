@@ -48,6 +48,7 @@ public class ReadBookClient: IApiClient
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
+        input.ChatModel = modelId;
         var api = _apiFactory.GetService(modelId);
         var gemini = _serviceProvider.GetRequiredService<GoogleGeminiClient>();
         bool isFirstBookChat = false;

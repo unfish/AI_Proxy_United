@@ -12,7 +12,7 @@ using SkiaSharp;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Automation, "RPA助手", "根据你的指令，自动使用一个虚拟浏览器打开指定的网页，并通过大模型的理解进行一步一步操作来完成指令，可以用于获取信息，但不要做步骤太复杂的操作。另外在服务器上创建文件保存长文本，多次编辑并返回文件内容。", 196, type: ApiClassTypeEnum.辅助模型, canUseFunction:true, canProcessImage:true,canProcessFile:true, priceIn: 0, priceOut: 0.1)]
+[ApiClass(M.Automation, "RPA助手", "根据你的指令，自动使用一个虚拟浏览器打开指定的网页，并通过大模型的理解进行一步一步操作来完成指令，可以用于获取信息，但不要做步骤太复杂的操作。另外在服务器上创建文件保存长文本，多次编辑并返回文件内容。", 196, type: ApiClassTypeEnum.辅助模型, canProcessImage:true,canProcessFile:true, priceIn: 0, priceOut: 0.1)]
 public class ApiAutomation:ApiBase
 {
     private IServiceProvider _serviceProvider;
@@ -59,6 +59,7 @@ public class AutomationClient: IApiClient
     private static ConcurrentDictionary<string, bool> stopSignsDictionary = new ConcurrentDictionary<string, bool>();
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
+        input.ChatModel = modelId;
         var api = _apiFactory.GetService(modelId);
         var system = $"""
  You are a helpful assistant that can control the computer. Only use computer when you needed.

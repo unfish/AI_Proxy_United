@@ -106,6 +106,9 @@
       "Key": "",
       "cx": ""
     },
+    "BoChaAI": {
+      "Key": ""
+    },
     "Grok": {
       "Host": "https://api.x.ai/",
       "Key": ""

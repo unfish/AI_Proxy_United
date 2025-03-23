@@ -1048,9 +1048,9 @@ public class FeishuService: BaseFeishuService, IFeishuService
         {
             SendAliWanXiangActions(res.ToString(), user_id);
         }
-        else if (res.resultType == ResultType.GoogleSearchResult)
+        else if (res.resultType == ResultType.SearchResult)
         {
-            var list = ((GoogleSearchResult)res).result;
+            var list = ((SearchResult)res).result;
             if (list.Count == 0)
             {
                 sbAnswer.Append("没有搜索到相关内容");

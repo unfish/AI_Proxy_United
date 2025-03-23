@@ -1,5 +1,6 @@
 using AI_Proxy_Web.Functions;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis.Base;
 
@@ -32,7 +33,7 @@ public enum ResultType
     FunctionResult, //其它函数调用时返回该类型的信息，可以让GPT继续对结果进行提问，其它类型的信息则直接返回给前端
     FuncStart, //开始执行函数，用于截断消息，或发送提醒
     FuncFinished, //需要多轮对话的复杂函数执行完成消息
-    GoogleSearchResult, //返回Google搜索结果列表List<GoogleSearchResultDto>
+    SearchResult, //返回Google搜索结果列表List<SearchResultDto>
     JinaArticle, //Jina.ai的文章采集结果
     MultiMediaResult, //图文混排结果集
     FollowUp, //消息结束后发送可自动提问的气泡消息
@@ -109,7 +110,7 @@ public class VideoFileResult : Result
     public byte[]? cover_image { get; set; }
     public string fileExt { get; set; }
     public string fileName { get; set; }
-    public int duration { get; set; }
+    public int duration { get; set; }//音频时长
     public static VideoFileResult Answer(byte[] bytes, string ext, string fileName = "", byte[]? cover = null, int duration = 6000)
     {
         return new VideoFileResult() {resultType = ResultType.VideoBytes, result = bytes, duration = duration, fileExt = ext, fileName = fileName, cover_image = cover};
@@ -173,12 +174,12 @@ public class MultiMediaResult : Result
     }
 }
 
-public class GoogleSearchResult : Result
+public class SearchResult : Result
 {
-    public List<GoogleSearchResultDto> result { get; set; }
-    public static GoogleSearchResult Answer(List<GoogleSearchResultDto> list)
+    public List<SearchResultDto> result { get; set; }
+    public static SearchResult Answer(List<SearchResultDto> list)
     {
-        return new GoogleSearchResult() {resultType = ResultType.GoogleSearchResult, result = list};
+        return new SearchResult() {resultType = ResultType.SearchResult, result = list};
     }
     public override string ToString()
     {

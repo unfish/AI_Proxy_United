@@ -290,7 +290,7 @@ public class FunctionRepository:IFunctionRepository
                     yield return FunctionStartResult.Answer(call);
                     await foreach (var res in GetInternalFunctionChatResult(call, input, reEnter))
                     {
-                        if(res.resultType == ResultType.FunctionResult || res.resultType == ResultType.GoogleSearchResult)
+                        if(res.resultType == ResultType.FunctionResult || res.resultType == ResultType.SearchResult)
                         {
                             call.Result = Result.Answer(res.ToString());
                             call.Prompt = func.FunctionPrompt;
