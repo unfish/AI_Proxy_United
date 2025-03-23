@@ -41,7 +41,7 @@ public class OneAgentClient: IApiClient
     {
         _apiFactory = apiFactory;
     }
-    private int modelId = (int)M.ClaudeThinking;
+    private int modelId = (int)M.Claude中杯;
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
