@@ -35,7 +35,7 @@ COPY chromedriver_linux64.zip .
 RUN unzip chromedriver_linux64.zip && \
     mv chromedriver /usr/bin && rm -f chromedriver_linux64.zip
     
-RUN apt-get -y update && apt-get install -y --no-install-recommends fonts-arphic-uming npm \
+RUN apt-get -y update && apt-get install -y --no-install-recommends fonts-noto-cjk npm \
     	&& rm -rf /var/lib/apt/lists/*
 
 RUN yes | npx playwright@1.50.0 install chromium && npm cache clean --force
