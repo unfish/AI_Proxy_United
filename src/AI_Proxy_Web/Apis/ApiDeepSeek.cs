@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.DeepSeek, "DeepSeekV3", "DeepSeek V3开源大模型。号称超越了GPT4的开源大模型，中文能力、推理能力、代码能力都很强。", 30, canUseFunction: false, priceIn: 1, priceOut: 4)]
+[ApiClass(M.DeepSeek, "DeepSeekV3", "DeepSeek V3开源大模型。号称超越了GPT4的开源大模型，中文能力、推理能力、代码能力都很强。", 30, canUseFunction: true, priceIn: 1, priceOut: 4)]
 public class ApiDeepSeek:ApiBase
 {
     protected DeepSeekClient _client;
