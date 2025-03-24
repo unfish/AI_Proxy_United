@@ -224,7 +224,7 @@ public class FunctionRepository:IFunctionRepository
 
             //Claude专用方法
             if (call.Name == "computer" || call.Name == "str_replace_editor" || call.Name == "bash" ||
-                call.Name == "OpenUrl" || call.Name == "Screenshot" || call.Name == "GetPageHtml" || call.Name == "GoBack" || call.Name == "SendFile")
+                call.Name == "OpenUrl" || call.Name == "GetPageHtml" || call.Name == "GoBack" || call.Name == "SendFile")
             {
                 call.Result = Result.Answer("DONE");
                 call.Type = FunctionType.Frontend;

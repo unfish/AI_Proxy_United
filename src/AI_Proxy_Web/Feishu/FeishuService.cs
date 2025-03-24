@@ -1223,10 +1223,6 @@ public class FeishuService: BaseFeishuService, IFeishuService
                 "\n[点击打开小程序查看报表](https://applink.feishu.cn/client/mini_program/open?appId=cli_a133823484b8d00e&mode=window-semi&relaunch=true&path=packageC%2Fpages%2Fdashboard-ai%2Fstatistics-ai%3Fargs%3D" +
                 HttpUtility.UrlEncode(args)+")", FeishuMessageType.PlainText);
         }
-        else
-        {
-            SendMessage(user_id, funcName+" Not found.");
-        }
     }
 
     public void StartNewContext(string user_id, bool roolUp = true)

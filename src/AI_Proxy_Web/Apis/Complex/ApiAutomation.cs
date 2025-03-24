@@ -65,7 +65,6 @@ public class AutomationClient: IApiClient
     }
     
     public int ModelId = (int)M.ClaudeAgent;
-    private static ConcurrentDictionary<string, bool> stopSignsDictionary = new ConcurrentDictionary<string, bool>();
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
         input.ChatModel = ModelId;
@@ -129,16 +128,6 @@ public class AutomationClient: IApiClient
             input.ChatContexts.SystemPrompt = "";
             input.ChatContexts.AddQuestion(system, ChatType.System);
         }
-        else
-        {
-            var lastQ = input.ChatContexts.Contexts.Last().QC.FirstOrDefault(t => t.Type == ChatType.文本)?.Content;
-            if (lastQ == "停止" || lastQ == "stop")
-            {
-                stopSignsDictionary.TryAdd(input.External_UserId, true);
-                input.ChatContexts.Contexts.RemoveAt(input.ChatContexts.Contexts.Count - 1);
-                yield break;
-            }
-        }
         input.AgentSystem = "web";
         input.DisplayWidth = 1280;
         input.DisplayHeight = 800;
@@ -148,7 +137,7 @@ public class AutomationClient: IApiClient
         bool stopSign = false;
         while (true)
         {
-            if (stopSignsDictionary.TryGetValue(input.External_UserId, out stopSign) && stopSign)
+            if (ApiBase.CheckStopSigns(input))
             {
                 yield return Result.Answer("收到停止指令，停止执行。");
                 break;
