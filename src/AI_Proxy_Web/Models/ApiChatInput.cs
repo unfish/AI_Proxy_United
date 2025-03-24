@@ -30,7 +30,7 @@ public record ApiChatInput
     public string[]? WithFunctions { get; set; }
 
     /// <summary>
-    /// 业务系统userid，用来传递当前用户身份，有AccountId取AccountId，没有就取飞书User_Id
+    /// 宪章userid，用来传递当前用户身份，有AccountId取AccountId，没有就取飞书User_Id
     /// </summary>
     public int UserId { get; set; }
 
@@ -50,7 +50,7 @@ public record ApiChatInput
     }
 
     /// <summary>
-    /// 业务系统的用户Token，用于调用后端接口
+    /// 宪章的用户Token，用于调用后端接口
     /// </summary>
     public string UserToken { get; set; } = string.Empty;
     
@@ -136,7 +136,8 @@ public record ApiChatInputIntern : ApiChatInput
     /// </summary>
     public int RecursionLevel { get; set; } = 0;
     
-    public AgentInfo? Agent { get; set; }
+    public List<KeyValuePair<string, string>>? AgentResults { get; set; } //向内部函数传递的跨Agent上下文信息
+    public AgentInfo? Agent { get; set; } //当前Agent的信息
 
     public class AgentInfo
     {

@@ -22,7 +22,7 @@ public class GetWeatherProcessor: BaseProcessor
         _funcArgs = funcArgs;
     }
 
-    protected override async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func, ApiChatInputIntern input, bool reEnter = false)
+    protected override async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func, ApiChatInputIntern input, ApiChatInputIntern callerInput, bool reEnter = false)
     {
         var w = _serviceProvider.GetRequiredService<IWeatherApi>();
         var o = JObject.Parse(_funcArgs);

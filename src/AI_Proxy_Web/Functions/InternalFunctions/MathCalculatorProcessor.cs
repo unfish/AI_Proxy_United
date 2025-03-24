@@ -24,7 +24,7 @@ public class MathCalculatorProcessor: BaseProcessor
         _funcArgs = funcArgs;
     }
 
-    protected override async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func, ApiChatInputIntern input, bool reEnter = false)
+    protected override async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func, ApiChatInputIntern input, ApiChatInputIntern callerInput, bool reEnter = false)
     {
         var o = JObject.Parse(_funcArgs);
         var formula = o["formula"].ToString();

@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.模型群聊, "模型群聊", "起一个题目，由多个模型自动对话进行深入讨论或辩论，挖掘出更丰富深层的信息。\n你可以提出一个专业的问题，也可以提出两个相对的观点用来辩论。\n请仔细思考你输入的问题，作为提问一方的AI的身份来问这个问题，并将提问方需要完成的任务也加进去。\n每一轮对话结束之后会显示提问一方准备要继续追问的问题，你可以点击使用该问题，也可以忽略它直接输入你想要继续追问的问题。\n要开启新问题的时候不要忘记点开始新会话。", 291, type: ApiClassTypeEnum.辅助模型)]
+[ApiClass(M.模型群聊, "模型群聊", "起一个题目，由多个模型自动对话进行深入讨论或辩论，挖掘出更丰富深层的信息。\n你可以提出一个专业的问题，也可以提出两个相对的观点用来辩论。\n请仔细思考你输入的问题，作为提问一方的AI的身份来问这个问题，并将提问方需要完成的任务也加进去。\n每一轮对话结束之后会显示提问一方准备要继续追问的问题，你可以点击使用该问题，也可以忽略它直接输入你想要继续追问的问题。\n要开启新问题的时候不要忘记点开始新会话。", 291, type: ApiClassTypeEnum.辅助模型,  needLongProcessTime:true)]
 public class ApiMultiModels:ApiBase
 {
     protected MultiModelsClient _client;
@@ -167,6 +167,9 @@ public class MultiModelsClient: IApiClient
 
         for (var i = 0; i < models.Length; i++) //每一轮让所有AI发言一遍
         {
+            if(ApiBase.CheckStopSigns(input))
+                break;
+            
             var model = models[i]; //当前使用哪个模型
             var api = _apiFactory.GetService(model);
             var inputF = JsonConvert.DeserializeObject<ApiChatInputIntern>(JsonConvert.SerializeObject(input)); //深度复制

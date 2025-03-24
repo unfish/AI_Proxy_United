@@ -22,7 +22,8 @@ public class OneAgentProcessor: BaseProcessor
     {
         {"信息搜集", new (){SystemPrompt = "你可以使用搜索摘要工具，获取某个主题的相关信息。要注意的是，搜索是通过Google来搜索，所以一次搜索的关键词不能太多，复杂的任务需要拆分成多次搜索来完成。该工具不会返回原始搜索结果，而是返回本次搜索目的所要求的解答信息，所以每次调用该工具时本次搜索的目的及需要它返回的信息的内容、格式等请描述清楚。" +
                                        "对任务有任何不确定的、模糊或缺失的信息需要用户确认的，可以随时向用户提问要求补充信息以提高最后的结果质量。最后你需要针对本次要求解决的问题产出一个完整的汇总结果，一次性输出，并以<finish>true</finish>来结束输出，以便程序知道你的信息搜索过程已经结束了。", Model = (int)M.Claude中杯}},
-        {"操作助手", new (){SystemPrompt = "对用户指令有任何不确定的、模糊或缺失的信息需要用户确认的，可以随时向用户提问要求补充信息以提高最后的结果质量。最后你需要针对本次要求解决的问题输出一个完整的汇总结果，一次性输出，并以<finish>true</finish>来结束输出，以便程序知道你的处理过程已经结束了。即使只是让你处理文件读写，完成后也要输出结束标记。", Model = (int)M.Automation}},
+        {"操作助手", new (){SystemPrompt = "对用户指令有任何不确定的、模糊或缺失的信息需要用户确认的，可以随时向用户提问要求补充信息以提高最后的结果质量。最后你需要针对本次要求解决的问题输出一个完整的汇总结果，一次性输出，并以<finish>true</finish>来结束输出，以便程序知道你的处理过程已经结束了。即使只是让你处理最简单的任务，完成后也要输出结束标记。", Model = (int)M.Automation}},
+        {"文件助手", new (){SystemPrompt = "所有操作完成后，以<finish>true</finish>来结束输出，以便程序知道你的处理过程已经结束了。即使只是让你处理最简单的任务，完成后也要输出结束标记。", Model = (int)M.AutomationEditor}},
         {"方案设计", new (){SystemPrompt = "你是一名优秀的方案设计师，需要完成用户指定的需求的详细方案设计，如果对方案有任何不清楚的，可以向用户提问后再继续。" +
                                        "对任务有任何不确定的、模糊或缺失的信息需要用户确认的，可以随时向用户提问要求补充信息以提高最后的结果质量。最后你需要产出一个完整的方案，一次性输出，并以<finish>true</finish>来结束输出，以便程序知道你的方案设计过程已经完成了。", Model = (int)M.Doubao_DeepSeekR1}},
         {"代码编写", new (){SystemPrompt = "你是一名优秀的程序设计师，需要根据用户提供的方案来编写完整的代码实现。请保持程序结构的简洁，及代码的完整性。不要重复思考过程和最后的输出过程，" +
@@ -35,7 +36,7 @@ public class OneAgentProcessor: BaseProcessor
                                       "然后你需要将计算过程和结果产出一个完整的结论，一次性输出，并以<finish>true</finish>来结束输出，以便程序知道你的计算过程已经完成了。", Model = (int)M.GPT4o}}
     };
 
-    protected override async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func, ApiChatInputIntern input, bool reEnter = false)
+    protected override async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func, ApiChatInputIntern input, ApiChatInputIntern callerInput, bool reEnter = false)
     {
         var o = JObject.Parse(func.Arguments);
         input.Agent = new ApiChatInputIntern.AgentInfo()
@@ -54,15 +55,16 @@ public class OneAgentProcessor: BaseProcessor
             input.ChatContexts = ChatContexts.New();
             input.ChatContexts.AddQuestion(input.Agent.Task);
             var need_contextsNames = o["need_contexts"].Values<string>();
-            if (need_contextsNames != null && need_contextsNames.Count() > 0)
+            if (need_contextsNames != null && need_contextsNames.Count() > 0 && input.AgentResults!=null)
             {
                 foreach (var name in need_contextsNames)
                 {
-                    foreach (var ctx in input.ChatContexts.AgentResults) //用于传递多个Agent结果的内容保存在主对话上下文中
+                    foreach (var ctx in input.AgentResults) //用于传递多个Agent结果的内容保存在主对话上下文中
                     {
                         if (ctx.Key == name)
                         {
-                            input.ChatContexts.AddQuestion(ctx.Value);
+                            input.ChatContexts.AddQuestion(
+                                "以下为 " + input.Agent.Role + "提供的参考信息：\n" + ctx.Value);
                             break;
                         }
                     }
@@ -96,10 +98,11 @@ public class OneAgentProcessor: BaseProcessor
 
         if (sb.ToString().Contains("<finish>true</finish>"))
         {
-            yield return Result.New(ResultType.FunctionResult, sb.ToString());
-            input.ChatContexts.AgentResults.Add(
-                new KeyValuePair<string, string>(input.Agent.Role,
-                    "以下为 " + input.Agent.Role + "提供的参考信息：\n" + sb.ToString()));
+            var content = sb.ToString();
+            yield return Result.New(ResultType.FunctionResult, content);
+            //把结果添加到上级input对象的上下文中传递下去
+            callerInput.ChatContexts.AgentResults.Add(
+                new KeyValuePair<string, string>(input.Agent.Role, content.Substring(0, content.IndexOf("<finish>true</finish>", StringComparison.Ordinal))));
         }
     }
 }

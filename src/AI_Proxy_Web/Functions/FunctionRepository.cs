@@ -174,7 +174,7 @@ public class FunctionRepository:IFunctionRepository
         var newInput = input with
         {
             ContextCachePrefix = func.Id, ChatContexts = null,
-            RecursionLevel = input.RecursionLevel + 1, WithFunctions = null
+            RecursionLevel = input.RecursionLevel + 1, WithFunctions = null, AgentResults = input.ChatContexts?.AgentResults
         };
         BaseProcessor? funcProcessor = null;
         string? error = null;
@@ -192,7 +192,7 @@ public class FunctionRepository:IFunctionRepository
             yield break;
         }
         
-        await foreach (var res in funcProcessor.ProcessResult(func, newInput, reEnter))
+        await foreach (var res in funcProcessor.ProcessResult(func, newInput, input, reEnter))
         {
             yield return res;
         }
@@ -208,6 +208,8 @@ public class FunctionRepository:IFunctionRepository
         List<FunctionCall> duplicate = new List<FunctionCall>(); //有时候会出现相同方法相同参数的多次调用，避免重复调用
         foreach (var call in functionCalls)
         {
+            if(ApiBase.CheckStopSigns(input))
+                break;
             if(call.Result != null)
                 continue;
             

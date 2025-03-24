@@ -75,8 +75,9 @@ public enum M
     GPT4oSearch = 194,
     拆书助手 = 195,
     Automation = 196,
-    OneAgent = 197,
-    DeepSearch = 198,
+    AutomationEditor = 197,
+    OneAgent = 198,
+    DeepSearch = 199,
     
     阿里万相 = 200,
     MidJourney = 201,
@@ -103,5 +104,6 @@ public enum M
     语音服务 = 300,
     DeepData计数 = 320,
     ClaudeAgent = 330,
-    OpenAIAgent = 331,
+    ClaudeEditor = 331,
+    OpenAIAgent = 332,
 }

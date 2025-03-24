@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.拆书助手, "拆书助手", "上传一本书，自动阅读理解，总结每一章节的摘要，以及全书的摘要，总结完成后你可以继续对书中的内容进行提问，还可以对全书内容自动生成思维导图。支持PDF/EPUB格式。", 195, type: ApiClassTypeEnum.辅助模型, canProcessFile:true, canProcessAudio:true, priceIn: 0, priceOut: 0.1)]
+[ApiClass(M.拆书助手, "拆书助手", "上传一本书，自动阅读理解，总结每一章节的摘要，以及全书的摘要，总结完成后你可以继续对书中的内容进行提问，还可以对全书内容自动生成思维导图。支持PDF/EPUB格式。", 195, type: ApiClassTypeEnum.辅助模型, canProcessFile:true, canProcessAudio:true, needLongProcessTime:true, priceIn: 0, priceOut: 0.1)]
 public class ApiReadBook:ApiBase
 {
     private IServiceProvider _serviceProvider;
@@ -44,7 +44,6 @@ public class ReadBookClient: IApiClient
         _serviceProvider = serviceProvider;
     }
     private int modelId = (int)M.Gemini小杯;
-    private static ConcurrentDictionary<string, bool> stopSignsDictionary = new ConcurrentDictionary<string, bool>();
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
@@ -160,7 +159,7 @@ public class ReadBookClient: IApiClient
 
             foreach (var tk in arr)
             {
-                if (stopSignsDictionary.TryGetValue(input.External_UserId, out stopSign) && stopSign)
+                if (ApiBase.CheckStopSigns(input))
                 {
                     yield return Result.Answer("收到停止指令，停止自动总结。");
                     break;
@@ -175,7 +174,7 @@ public class ReadBookClient: IApiClient
                 }
             }
 
-            if (stopSignsDictionary.TryGetValue(input.External_UserId, out stopSign) && stopSign)
+            if (ApiBase.CheckStopSigns(input))
             {
                 yield return Result.Answer("收到停止指令，停止自动总结。");
             }
@@ -192,19 +191,10 @@ public class ReadBookClient: IApiClient
         }
         else //不是首次进入
         {
-             q = input.ChatContexts.Contexts.LastOrDefault()?.QC.FirstOrDefault(t => t.Type == ChatType.文本);
-             if (q != null && (q.Content == "stop" || q.Content == "停止")) //记录停止标志，不做响应
-             {
-                 stopSignsDictionary.TryAdd(input.External_UserId, true);
-                 input.ChatContexts.Contexts.RemoveAt(input.ChatContexts.Contexts.Count - 1);
-             }
-             else //正常对话
-             {
-                 await foreach (var res in api.ProcessChat(input))
-                 {
-                     yield return res;
-                 }
-             }
+            await foreach (var res in api.ProcessChat(input))
+            {
+                yield return res;
+            }
         }
 
         input.IgnoreAutoContexts = true; //跟内层模型共享同一个input对象，内层模型已经保存过上下文了，外层不需要保存，不然会重复叠加上下文

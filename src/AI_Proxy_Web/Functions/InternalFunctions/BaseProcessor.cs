@@ -14,12 +14,12 @@ public class BaseProcessor
     }
     
     public async IAsyncEnumerable<Result> ProcessResult(FunctionCall func,
-        ApiChatInputIntern input, bool reEnter = false)
+        ApiChatInputIntern input, ApiChatInputIntern callerInput, bool reEnter = false)
     {
         if (ClearUserQuestions)
             input.QuestionContents = new();
         ProcessParam(input, func.Arguments);
-        await foreach (var res in DoProcessResult(func, input, reEnter))
+        await foreach (var res in DoProcessResult(func, input, callerInput, reEnter))
         {
             yield return res;
         }
@@ -35,10 +35,11 @@ public class BaseProcessor
     /// </summary>
     /// <param name="func"></param>
     /// <param name="input"></param>
+    /// <param name="callerInput"></param>
     /// <param name="reEnter"></param>
     /// <returns></returns>
     protected virtual async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func,
-        ApiChatInputIntern input, bool reEnter = false)
+        ApiChatInputIntern input, ApiChatInputIntern callerInput, bool reEnter = false)
     {
         var api = _apiFactory.GetService(input.ChatModel);
         await foreach (var res in api.ProcessChat(input))

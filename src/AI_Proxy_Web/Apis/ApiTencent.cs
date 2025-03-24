@@ -133,7 +133,7 @@ public class TencentClient:OpenAIClientBase, IApiClient
         var msgs = GetFullMessages(input.ChatContexts);
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         var max_tokens = isImageMsg ? 1024 : 4096;
-        if(modelName.Contains("t1"))
+        if (modelName.Contains("t1"))
             max_tokens = 32000;
         return JsonConvert.SerializeObject(new
         {

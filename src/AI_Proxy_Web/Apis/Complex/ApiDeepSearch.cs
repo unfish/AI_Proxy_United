@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.DeepSearch, "深度搜索", "提出一个复杂的信息收集任务，由模型进行任务分解，并自动进行任务编排，调用搜索功能执行多次搜索，并输出一篇完整的结果。", 198, type: ApiClassTypeEnum.搜索模型, priceIn: 0, priceOut: 0.1)]
+[ApiClass(M.DeepSearch, "深度搜索", "提出一个复杂的信息收集任务，由模型进行任务分解，并自动进行任务编排，调用搜索功能执行多次搜索，并输出一篇完整的结果。", 198, type: ApiClassTypeEnum.搜索模型, needLongProcessTime:true, priceIn: 0, priceOut: 0.1)]
 public class ApiDeepSearch:ApiBase
 {
     private IServiceProvider _serviceProvider;

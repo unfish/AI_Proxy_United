@@ -27,12 +27,13 @@ public class ApiClassAttribute : Attribute
     public bool CanProcessImage { get; set; }
     public bool CanProcessMultiImages { get; set; }
     public bool CanProcessAudio { get; set; }
+    public bool NeedLongProcessTime { get; set; } //需要长时间运行，要处理防并发问题
     public int NeedLevel { get; set; } //需要指定等级以上的客户才能使用这个模型
     public decimal PriceIn { get; set; } //百万Token输入价格
     public decimal PriceOut { get; set; } //百万Token输出价格，画图模型是单张价格
     public ApiClassAttribute(M id, string name, string description, int order, ApiClassTypeEnum type = ApiClassTypeEnum.问答模型, 
         bool canUseFunction = false, bool canProcessFile = false, bool canProcessImage = false, bool canProcessMultiImages = false, bool canProcessAudio = false,
-        double priceIn = -1, double priceOut = -1)
+        double priceIn = -1, double priceOut = -1, bool needLongProcessTime = false)
     {
         this.Id = (int)id;
         this.Name = name;
@@ -46,5 +47,6 @@ public class ApiClassAttribute : Attribute
         this.CanProcessAudio = canProcessAudio;
         this.PriceIn = (decimal)priceIn;
         this.PriceOut = (decimal)priceOut;
+        this.NeedLongProcessTime = needLongProcessTime;
     }
 }

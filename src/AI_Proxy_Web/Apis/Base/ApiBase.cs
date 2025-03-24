@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using AI_Proxy_Web.Database;
 using AI_Proxy_Web.Functions;
@@ -17,7 +18,6 @@ public abstract class ApiBase
     private IServiceProvider _serviceProvider;
     private ILogRepository _logRepository;
     private IFunctionRepository _functionRepository;
-
     protected ApiBase(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
@@ -25,16 +25,77 @@ public abstract class ApiBase
         _functionRepository = serviceProvider.GetRequiredService<IFunctionRepository>();
     }
 
+    #region 并发检查和长循环自动停止检查
+    private static ConcurrentDictionary<string, bool> StopSignsDictionary = new ConcurrentDictionary<string, bool>(); //全局中止命令
+    private static ConcurrentDictionary<string, bool> RunningSignsDictionary = new ConcurrentDictionary<string, bool>(); //全局运行锁，同一个用户要防止多任务并发
+    private static void SetRunningSigns(ApiChatInputIntern input)
+    {
+        if(input.RecursionLevel==0)
+            RunningSignsDictionary.AddOrUpdate($"{input.External_UserId}_{input.ContextCachePrefix}_Running", true,
+                (s, b) => true);
+    }
+    private static bool CheckRunningSigns(ApiChatInputIntern input)
+    {
+        if (input.RecursionLevel == 0)
+            return RunningSignsDictionary.ContainsKey($"{input.External_UserId}_{input.ContextCachePrefix}_Running");
+        return false;
+    }
+    private static void RemoveRunningSigns(ApiChatInputIntern input)
+    {
+        if (input.RecursionLevel == 0)
+        {
+            RunningSignsDictionary.TryRemove($"{input.External_UserId}_{input.ContextCachePrefix}_Running", out _);
+            RemoveStopSigns(input);
+        }
+    }
+    private static void SetStopSigns(ApiChatInputIntern input)
+    {
+        StopSignsDictionary.AddOrUpdate($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping", true,
+            (s, b) => true);
+    }
+    public static bool CheckStopSigns(ApiChatInputIntern input)
+    {
+        return StopSignsDictionary.ContainsKey($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping");
+    }
+    private static void RemoveStopSigns(ApiChatInputIntern input)
+    {
+        StopSignsDictionary.TryRemove($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping", out _);
+    }
+    
+    #endregion
+
     /// <summary>
     /// 预处理输入参数
     /// </summary>
     /// <param name="input"></param>
     private async IAsyncEnumerable<Result> ProcessChatInput(ApiChatInputIntern input)
     {
+        var dp = DI.GetApiClassAttribute(input.ChatModel);
+        var ques = input.QuestionContents.FirstOrDefault(t => t.Type == ChatType.文本)?.Content ?? "";
+        if (CheckRunningSigns(input) && (dp?.NeedLongProcessTime ?? false))
+        {
+            if (ques == "stop" || ques == "停止")
+            {
+                SetStopSigns(input);
+                yield return Result.Error("程序会在结束当前阶段性任务后自动停止。");
+            }
+            else if (ques == "CLEAR")
+            {
+                RemoveRunningSigns(input);
+                yield return Result.Error("运行标志已强制清除，您现在可以发起新的对话了。");
+            }
+            else
+            {
+                yield return Result.Error("上一个对话还在进行中，请在结束后发起新的对话。");
+            }
+
+            yield break;
+        }
+
         this.InitSpecialInputParam(input);
         if (input.ChatContexts == null) //只有为空的时候才自动加载，某些API需要自己控制Contexts的保存和读取
         {
-            if(input.IgnoreAutoContexts)
+            if (input.IgnoreAutoContexts)
                 input.ChatContexts = ChatContexts.New();
             else
             {
@@ -44,11 +105,24 @@ public abstract class ApiBase
                 if (ac != null && ac.Type == ChatType.FunctionCall)
                 {
                     var calls = JsonConvert.DeserializeObject<List<FunctionCall>>(ac.Content);
-                    if (calls.Any(t => t.Result is null))
+                    if (calls?.Any(t => t.Result is null) == true)
                     {
-                        await foreach (var res2 in _functionRepository.ProcessChatFunctionCalls(calls, input, true))
+                        if (ques == "跳过")
                         {
-                            yield return res2;
+                            foreach (var call in calls)
+                            {
+                                if (call.Result is null)
+                                {
+                                    call.Result = Result.Answer("Error: 未知错误，Function无法正常运行。");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            await foreach (var res2 in _functionRepository.ProcessChatFunctionCalls(calls, input, true))
+                            {
+                                yield return res2;
+                            }
                         }
 
                         ReplaceChatResultContexts(ResultType.FunctionCalls, JsonConvert.SerializeObject(calls), input);
@@ -64,46 +138,44 @@ public abstract class ApiBase
             input.ChatContexts.SystemPrompt =
                 input.ChatContexts.SystemPrompt.Replace("{Instruction}", configHelper.GetConfig<string>("Instruction"));
         }
-        var dp = DI.GetApiClassAttribute(input.ChatModel);
+
         //预留处理，当使用多代理功能的时候，用户的输入可能要转发给下级代理来处理
-        if (input.QuestionContents.Count > 0)
+        foreach (var q in input.QuestionContents)
         {
-            foreach (var q in input.QuestionContents)
+            if (q.Type == ChatType.文件Bytes && q.Bytes != null && q.Bytes.Length > 0)
             {
-                if (q.Type == ChatType.文件Bytes && q.Bytes != null && q.Bytes.Length > 0)
+                if (q.MimeType.Contains("image"))
                 {
-                    if (q.MimeType.Contains("image"))
+                    q.Content = Convert.ToBase64String(ImageHelper.Compress(q.Bytes));
+                    q.Type = ChatType.图片Base64;
+                    q.Bytes = null;
+                }
+                else if (q.MimeType.Contains("audio"))
+                {
+                    if (dp?.CanProcessAudio == true)
                     {
-                        q.Content = Convert.ToBase64String(ImageHelper.Compress(q.Bytes));
-                        q.Type = ChatType.图片Base64;
+                        q.Content = Convert.ToBase64String(q.Bytes);
+                        q.Type = ChatType.语音Base64;
                         q.Bytes = null;
                     }
-                    else if (q.MimeType.Contains("audio"))
+                    else
                     {
-                        if (dp?.CanProcessAudio == true)
+                        var audioService = _serviceProvider.GetRequiredService<IAudioService>();
+                        var res = await audioService.VoiceToText(q.Bytes, q.FileName);
+                        if (res.resultType == ResultType.Answer)
                         {
-                            q.Content = Convert.ToBase64String(q.Bytes);
-                            q.Type = ChatType.语音Base64;
+                            q.Content = res.ToString();
+                            q.Type = ChatType.文本;
                             q.Bytes = null;
-                        }
-                        else
-                        {
-                            var audioService = _serviceProvider.GetRequiredService<IAudioService>();
-                            var res = await audioService.VoiceToText(q.Bytes, q.FileName);
-                            if (res.resultType == ResultType.Answer)
-                            {
-                                q.Content = res.ToString();
-                                q.Type = ChatType.文本;
-                                q.Bytes = null;
-                            }
                         }
                     }
                 }
             }
-            input.ChatContexts.AddQuestions(input.QuestionContents);
-            input.QuestionContents.Clear();
         }
-        
+
+        input.ChatContexts.AddQuestions(input.QuestionContents); //将本次问题合并进完整上下文
+        input.QuestionContents.Clear();
+
         //前台没有指定使用特定函数的时候，根据输入的词自动加载可用函数
         if (ChatModel.CanUseFunction(input.ChatModel) && (input.WithFunctions == null || input.WithFunctions.Length == 0))
         {
@@ -120,15 +192,17 @@ public abstract class ApiBase
         {
             yield return Result.Error("当前模型不支持图片处理。");
         }
+
         if (dp?.CanProcessAudio != true && input.ChatContexts.HasAudio())
         {
             yield return Result.Error("当前模型不支持语音处理。");
         }
+
         if (dp?.CanProcessFile != true && input.ChatContexts.HasFile())
         {
             yield return Result.Error("当前模型不支持文件处理。");
         }
-        
+
     }
 
     /// <summary>
@@ -247,7 +321,8 @@ public abstract class ApiBase
             if(pRes.resultType == ResultType.Error)
                 yield break;
         }
-        
+
+        SetRunningSigns(input);
         var sb = new StringBuilder(); //返回的内容，只有正常返回需要记日志
         var sbAnswer = new StringBuilder(); //Answer需要记对话上下文
         var sbReason = new StringBuilder(); //Reason需要记对话上下文
@@ -293,7 +368,7 @@ public abstract class ApiBase
         if (sRes is LogSavedResult)
             yield return sRes;
 
-        if (functionCalls != null)
+        if (functionCalls != null && !CheckStopSigns(input))
         {
             await foreach (var res2 in _functionRepository.ProcessChatFunctionCalls(functionCalls.result, input))
             {
@@ -309,6 +384,8 @@ public abstract class ApiBase
                 }
             }
         }
+       
+        RemoveRunningSigns(input);
     }
 
     //虚方法，留给子类覆盖

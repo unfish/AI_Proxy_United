@@ -5,7 +5,7 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchUrl": "/",
-      "applicationUrl": "http://*:5141",
+      "applicationUrl": "http://*:8080",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "TESSDATA_PREFIX": "~/Download/tessdata-4.1.0/"

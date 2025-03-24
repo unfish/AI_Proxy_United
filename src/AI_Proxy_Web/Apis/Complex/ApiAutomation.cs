@@ -12,15 +12,13 @@ using SkiaSharp;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Automation, "RPA助手", "根据你的指令，自动使用一个虚拟浏览器打开指定的网页，并通过大模型的理解进行一步一步操作来完成指令，可以用于获取信息，但不要做步骤太复杂的操作。另外在服务器上创建文件保存长文本，多次编辑并返回文件内容。", 196, type: ApiClassTypeEnum.辅助模型, canProcessImage:true,canProcessFile:true, priceIn: 0, priceOut: 0.1)]
+[ApiClass(M.Automation, "RPA助手", "根据你的指令，自动使用一个虚拟浏览器打开指定的网页，并通过大模型的理解进行一步一步操作来完成指令，可以用于获取信息，但不要做步骤太复杂的操作。", 196, type: ApiClassTypeEnum.辅助模型, canProcessImage:true,canProcessFile:true, needLongProcessTime:true, priceIn: 0, priceOut: 0.1)]
 public class ApiAutomation:ApiBase
 {
-    private IServiceProvider _serviceProvider;
-    private AutomationClient _client;
+    protected AutomationClient _client;
     public ApiAutomation(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client = serviceProvider.GetRequiredService<AutomationClient>();
-        _serviceProvider = serviceProvider;
     }
 
     protected override async IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input)
@@ -40,6 +38,17 @@ public class ApiAutomation:ApiBase
     }
 }
 
+[ApiClass(M.AutomationEditor, "文件助手",
+    "根据你的指令，在服务器上自主创建文件、编辑文件，用来保存长文本，并可以直接返回整个文件。", 197,
+    type: ApiClassTypeEnum.辅助模型, canProcessImage: true, canProcessFile: true, priceIn: 0, priceOut: 0.1)]
+public class ApiAutomationEditor : ApiAutomation
+{
+    public ApiAutomationEditor(IServiceProvider serviceProvider) : base(serviceProvider)
+    {
+        _client.ModelId = (int)M.ClaudeEditor;
+    }
+}
+
 public class AutomationClient: IApiClient
 {
     private IApiFactory _apiFactory;
@@ -55,43 +64,62 @@ public class AutomationClient: IApiClient
         File.WriteAllText(filename, content);
     }
     
-    private int modelId = (int)M.ClaudeAgent;
+    public int ModelId = (int)M.ClaudeAgent;
     private static ConcurrentDictionary<string, bool> stopSignsDictionary = new ConcurrentDictionary<string, bool>();
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
-        input.ChatModel = modelId;
-        var api = _apiFactory.GetService(modelId);
-        var system = $"""
- You are a helpful assistant that can control the computer. Only use computer when you needed.
- <SYSTEM_CAPABILITY>
- * You are using a "browser only system" with internet access, the webpage is full screen.
- * To open a new webpage, just call "OpenUrl" function and give it an url parameter. This should be your first action.
- * If webpage has a popup window, please close it first, or it may stop all actions.
- * If webpage need login with QRCode, stop and wait user scan the code to login. Wait until user ask to go on.
- * If you need back to previous page, call "GoBack" function.
- * If you need get full page html content, call "GetPageHtml" function, eg: get full article content, no need scroll and screenshot.
- * You can use bash and text_editor tools to run LINUX commands or edit local text file. Always use relative path. DO NOT recheck file content each time you write.
- * If user need you send edited File to him, call "SendFile" function. Always use relative path.
- * If you need scroll down or scroll up the web page, use mouse scroll.
- * When viewing a page make sure you scroll down to see everything before deciding something isn't available.
- * When using your computer function calls, they take a while to run and send back to you. Where possible/feasible, try to chain multiple of these calls all into one function calls request.
- * The current time is {DateTime.Now:yyyy-MM-dd HH:mm:ss}.
- </SYSTEM_CAPABILITY>
+        input.ChatModel = ModelId;
+        var api = _apiFactory.GetService(ModelId);
+        var system = "";
+        if (ModelId == (int)M.ClaudeEditor)
+        {
+            system = $"""
+                       You are a helpful assistant that can control the computer text editor. Only use computer when you needed.
+                       <SYSTEM_CAPABILITY>
+                       * You can use bash and text_editor tools to run LINUX commands or edit local text file. Always use relative path. DO NOT recheck file content each time you write.
+                       * If user need you send edited File to him, call "SendFile" function. Always use relative path.
+                       * When using your computer function calls, they take a while to run and send back to you. Where possible/feasible, try to chain multiple of these calls all into one function calls request.
+                       * The current time is {DateTime.Now:yyyy-MM-dd HH:mm:ss}.
+                       </SYSTEM_CAPABILITY>
+                      
+                       Do not assume you did it correctly, use tools to verify.
+                       If you are sure the current status is correct, you should stop or do next step, do not repeat action.
+                       Think step by step. Before you start, think about the steps you need to take to achieve the desired outcome.
+                       使用中文回复用户。
+                      """;
+        }
+        else
+        {
+            system = $"""
+                       You are a helpful assistant that can control the computer. Only use computer when you needed.
+                       <SYSTEM_CAPABILITY>
+                       * You are using a "browser only system" with internet access, the webpage is full screen.
+                       * To open a new webpage, just call "OpenUrl" function and give it an url parameter. This should be your first action.
+                       * If webpage has a popup window, please close it first, or it may stop all actions.
+                       * If webpage need login with QRCode, stop and wait user scan the code to login. Wait until user ask to go on.
+                       * If you need back to previous page, call "GoBack" function.
+                       * If you need get full page html content, call "GetPageHtml" function, eg: get full article content, no need scroll and screenshot.
+                       * If you need scroll down or scroll up the web page, use mouse scroll.
+                       * When viewing a page make sure you scroll down to see everything before deciding something isn't available.
+                       * When using your computer function calls, they take a while to run and send back to you. Where possible/feasible, try to chain multiple of these calls all into one function calls request.
+                       * The current time is {DateTime.Now:yyyy-MM-dd HH:mm:ss}.
+                       </SYSTEM_CAPABILITY>
+                      
+                       <IMPORTANT>
+                       * Try to chain multiple of these calls all into one function calls request, like click and type text.
+                       * Before any text input, ensure the target has focus.
+                       * This computer can NOT open google.com, youtube, twitter/x.com eg.
+                       </IMPORTANT>
+                      
+                       Do sames things together, like a series of text input or type key commands, do not wait comfirm or screenshot for each step.
+                       Do not assume you did it correctly, use tools to verify.
+                       If you are sure the current status is correct, you should stop or do next step, do not repeat action.
+                       After taking a screenshot, evaluate if you have achieved the desired outcome and to know what to do next and adapt your plan.
+                       Think step by step. Before you start, think about the steps you need to take to achieve the desired outcome.
+                       使用中文回复用户。
+                      """;
+        }
 
- <IMPORTANT>
- * Try to chain multiple of these calls all into one function calls request, like click and type text.
- * Before any text input, ensure the target has focus.
- * This computer can NOT open google.com, youtube, twitter/x.com eg.
- </IMPORTANT>
-
- Do sames things together, like a series of text input or type key commands, do not wait comfirm or screenshot for each step.
- Do not assume you did it correctly, use tools to verify.
- When asked to do something on the computer and if you don't have enough context, take a screenshot to know what the user is really looking at.
- If you are sure the current status is correct, you should stop or do next step, do not repeat action.
- After taking a screenshot, evaluate if you have achieved the desired outcome and to know what to do next and adapt your plan.
- Think step by step. Before you start, think about the steps you need to take to achieve the desired outcome.
- 使用中文回复用户。
-""";
         if (input.ChatContexts.Contexts.Count == 1)
         {
             if (input.ChatContexts.SystemPrompt?.Contains("<finish>")==true)
@@ -125,7 +153,6 @@ public class AutomationClient: IApiClient
                 yield return Result.Answer("收到停止指令，停止执行。");
                 break;
             }
-            bool needRerun = false;
             times++;
             await foreach (var res in api.ProcessChat(input))
             {
@@ -142,7 +169,6 @@ public class AutomationClient: IApiClient
                         var ret = await brower.OpenUrl(url);
                         if(!ret)
                             call.Result= Result.Error("Error: Can't open this url, try another please.");
-                        needRerun = true;
                     }
                     else if (call.Name == "SendFile")
                     {  
@@ -157,12 +183,10 @@ public class AutomationClient: IApiClient
                     else if (call.Name == "GoBack")
                     {
                         await brower.GoBack();
-                        needRerun = true;
                     }else if (call.Name == "GetPageHtml")
                     {
                         var html = await brower.GetHtml();
                         call.Result = Result.Answer(html);
-                        needRerun = true;
                     }else if (call.Name == "computer")
                     {
                         yield return Result.Reasoning($"call computer_use({call.Arguments})\n\n");
@@ -171,7 +195,14 @@ public class AutomationClient: IApiClient
                         if (action == "screenshot")
                         {
                             var bytes = await brower.Screenshot();
-                            call.Result = FileResult.Answer(bytes, "png", ResultType.ImageBytes, "screenshot.png");
+                            if (bytes == null)
+                            {
+                                call.Result = Result.Answer("Error: You should call OpenUrl before screenshot.");
+                            }
+                            else
+                            {
+                                call.Result = FileResult.Answer(bytes, "png", ResultType.ImageBytes, "screenshot.png");
+                            }
                             yield return call.Result;
                         }else if (action == "mouse_move")
                         {
@@ -213,7 +244,6 @@ public class AutomationClient: IApiClient
                             var duration = o["duration"].Value<int>();
                             Thread.Sleep(duration * 1000);
                         }
-                        needRerun = true;
                     }else if (call.Name == "str_replace_editor")
                     {
                         yield return Result.Reasoning($"call text_editor()\n\n");
@@ -268,13 +298,12 @@ public class AutomationClient: IApiClient
                         {
                             call.Result = Result.Answer("Error: I can't undo edit.");
                         }
-                        
-                        needRerun = true;
                     }else if (call.Name == "bash")
                     {
                         yield return Result.Reasoning($"call bash({call.Arguments})\n\n");
                         var o =  JObject.Parse(call.Arguments);
                         var command = o["command"].Value<string>();
+                        var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "auto_files/"+input.External_UserId + "/");
                         // 创建一个 ProcessStartInfo 对象
                         var processStartInfo = new ProcessStartInfo
                         {
@@ -283,7 +312,8 @@ public class AutomationClient: IApiClient
                             RedirectStandardOutput = true,  // 重定向标准输出
                             RedirectStandardError = true,   // 重定向错误输出
                             UseShellExecute = false,        // 禁用 shell 执行
-                            CreateNoWindow = true           // 不创建窗口
+                            CreateNoWindow = true,           // 不创建窗口
+                            WorkingDirectory = fullPath
                         };
                         // 启动进程
                         using (var process = new Process { StartInfo = processStartInfo })
@@ -304,18 +334,15 @@ public class AutomationClient: IApiClient
                                 call.Result = Result.Answer(output);
                             }
                         }
-                        
-                        needRerun = true;
                     }
                 }
                 else
                     yield return res;
             }
-            if(!needRerun)
-                break;
             if (times > autoStopTimes)
             {
                 yield return Result.Answer("已达到自动操作步数上限，自动中止。");
+                break;
             }
         }
 
@@ -416,12 +443,19 @@ public class AutomationHelper
         _lastActionTime = DateTime.Now;
     }
 
-    public async Task<byte[]> Screenshot()
+    public async Task<byte[]?> Screenshot()
     {
         _lastActionTime = DateTime.Now;
-        var page = _pages.Last();
-        var bytes = await page.ScreenshotAsync();
-        return ImageHelper.Compress(bytes, new SKSize(_pageWidth,  _pageHeight), SKEncodedImageFormat.Png);
+        if (_pages.Count > 0)
+        {
+            var page = _pages.Last();
+            var bytes = await page.ScreenshotAsync();
+            return ImageHelper.Compress(bytes, new SKSize(_pageWidth, _pageHeight), SKEncodedImageFormat.Png);
+        }
+        else
+        {
+            return null;
+        }
     }
 
     public async Task<string> GetHtml()
