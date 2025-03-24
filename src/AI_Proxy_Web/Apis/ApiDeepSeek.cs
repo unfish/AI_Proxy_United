@@ -99,7 +99,7 @@ public class DeepSeekClient:OpenAIClientBase, IApiClient
             temperature = tmp,
             stream,
             tools,
-            max_tokens = 4096,
+            max_tokens = 8192,
             user = input.External_UserId
         }, jSetting);
     }
