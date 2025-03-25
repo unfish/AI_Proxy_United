@@ -329,7 +329,7 @@ public class AutomationClient: IApiClient
                 else
                     yield return res;
             }
-            if(!!needRerun)
+            if(!needRerun)
                 break;
             if (times > autoStopTimes)
             {
