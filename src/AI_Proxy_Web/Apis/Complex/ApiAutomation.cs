@@ -608,6 +608,9 @@ public class AutomationHelper
         _currentX = x;
         _currentY = y;
         await page.Mouse.ClickAsync(x, y);
+        // 等待页面完全加载
+        await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
         Thread.Sleep(_actionWaitTime);
         _lastActionTime = DateTime.Now;
     }
@@ -644,6 +647,9 @@ public class AutomationHelper
         if (await page.Locator(selector).CountAsync() == 1)
         {
             await page.Locator(selector).ClickAsync(new() { Force = true });
+            // 等待页面完全加载
+            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
             Thread.Sleep(_actionWaitTime);
             return true;
         }
