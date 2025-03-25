@@ -253,7 +253,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
             }});
         }
 
-        if (ExtraTools.Contains(ExtraTool.Text_Editor))
+        if (ExtraTools.Contains(ExtraTool.Text_Editor)||ExtraTools.Contains(ExtraTool.Computer))
         {
             tools.Add(new { type = "text_editor_20250124", name = "str_replace_editor" });
             tools.Add(new{name="SendFile", description="Send file content to user.", input_schema=new
@@ -265,7 +265,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
             }});
         }
 
-        if (ExtraTools.Contains(ExtraTool.Bash))
+        if (ExtraTools.Contains(ExtraTool.Bash)||ExtraTools.Contains(ExtraTool.Computer))
         {
             tools.Add(new { type = "bash_20250124", name = "bash" });
         }

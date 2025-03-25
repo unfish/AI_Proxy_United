@@ -1,0 +1,74 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "*"
+  ],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "store:default",
+    "fs:scope-appdata-recursive",
+    "fs:scope-document-recursive",
+    "fs:scope-download-recursive",
+    "fs:scope-desktop-recursive",
+    "fs:allow-document-read",
+    "fs:allow-document-write",
+    "fs:allow-document-read-recursive",
+    "fs:allow-document-write-recursive",
+    "fs:allow-download-read",
+    "fs:allow-download-write",
+    "fs:allow-download-read-recursive",
+    "fs:allow-download-write-recursive",
+    "fs:allow-desktop-read",
+    "fs:allow-desktop-write",
+    "fs:allow-desktop-read-recursive",
+    "fs:allow-desktop-write-recursive",
+    "fs:allow-app-read",
+    "fs:allow-app-write",
+    "fs:allow-app-read-recursive",
+    "fs:allow-app-write-recursive",
+    "fs:allow-appcache-read",
+    "fs:allow-appcache-write",
+    "fs:allow-appcache-read-recursive",
+    "fs:allow-appcache-write-recursive",
+    "fs:allow-appconfig-read",
+    "fs:allow-appconfig-write",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
+    "dialog:allow-message",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-set-position",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://api.pwmqr.com"
+        }
+      ]
+    },
+    "os:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "exec-sh",
+          "cmd": "sh",
+          "args": [
+            "-c",
+            {
+              "validator": "\\S+([\\s\\S]*)"
+            }
+          ],
+          "sidecar": false
+        }
+      ]
+    },
+    "fs:default",
+    "dialog:default",
+    "upload:default"
+  ]
+}
