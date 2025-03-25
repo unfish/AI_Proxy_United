@@ -176,6 +176,11 @@ public abstract class ApiBase
         input.ChatContexts.AddQuestions(input.QuestionContents); //将本次问题合并进完整上下文
         input.QuestionContents.Clear();
 
+        if (input.ChatContexts.Contexts.Last().AC.Count > 0)
+        {
+            input.ChatContexts.Contexts.Add(ChatContext.New(new List<ChatContext.ChatContextContent>()));
+        }
+        
         //前台没有指定使用特定函数的时候，根据输入的词自动加载可用函数
         if (ChatModel.CanUseFunction(input.ChatModel) && (input.WithFunctions == null || input.WithFunctions.Length == 0))
         {
