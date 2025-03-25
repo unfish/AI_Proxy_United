@@ -121,7 +121,7 @@ public class WebControlClient: IApiClient
                         await brower.GoBack();
                     }else if (call.Name == "Screenshot")
                     {
-                        var bytes = await brower.Screenshot();
+                        var bytes = await brower.Screenshot(true);
                         yield return FileResult.Answer(bytes, "png", ResultType.ImageBytes);
                     }else if (call.Name == "GetPageHtml")
                     {

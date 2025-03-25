@@ -443,13 +443,13 @@ public class AutomationHelper
         _lastActionTime = DateTime.Now;
     }
 
-    public async Task<byte[]?> Screenshot()
+    public async Task<byte[]?> Screenshot(bool fullscreen=false)
     {
         _lastActionTime = DateTime.Now;
         if (_pages.Count > 0)
         {
             var page = _pages.Last();
-            var bytes = await page.ScreenshotAsync();
+            var bytes = await page.ScreenshotAsync(new() { FullPage = fullscreen });
             return ImageHelper.Compress(bytes, new SKSize(_pageWidth, _pageHeight), SKEncodedImageFormat.Png);
         }
         else
