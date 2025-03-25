@@ -40,9 +40,9 @@ public enum M
     Grok = 37,
     Grok3 = 38,
     
-    GPT4MiniProxy = 100,
-    GPT4Proxy = 101,
-    //GPT3_5备用 = 102,
+    DeerApi_GPT4oMini = 100,
+    DeerApi_GPT4o = 101,
+    DeerApi_GPT45 = 102,
     //GPT4备用 = 103,
     //Claude备用 = 104,
     GPT_o1 = 112,

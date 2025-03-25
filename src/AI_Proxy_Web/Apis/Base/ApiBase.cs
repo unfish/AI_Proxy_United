@@ -391,7 +391,7 @@ public abstract class ApiBase
     //虚方法，留给子类覆盖
     protected virtual async IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input)
     {
-        var api = _serviceProvider.GetRequiredService<ApiGPTOriginal>();
+        var api = _serviceProvider.GetRequiredService<ApiOpenAIBase>();
         await foreach (var res in api.ProcessChat(input))
         {
             yield return res;
@@ -452,7 +452,7 @@ public abstract class ApiBase
     //虚方法，留给子类覆盖
     protected virtual async Task<Result> DoProcessQuery(ApiChatInputIntern input)
     {
-        var api = _serviceProvider.GetRequiredService<ApiGPTOriginal>();
+        var api = _serviceProvider.GetRequiredService<ApiOpenAIBase>();
         return await api.ProcessQuery(input);
     }
 
