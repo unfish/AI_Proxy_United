@@ -81,9 +81,9 @@ public class WebControlClient: IApiClient
 
         var times = 0; //计算循环次数，防止死循环
         var autoStopTimes = 20; //需要自动中止的次数
-        bool needRerun = false;
         while (true)
         {
+            bool needRerun = false;
             if (ApiBase.CheckStopSigns(input))
             {
                 yield return Result.Answer("收到停止指令，停止执行。");
