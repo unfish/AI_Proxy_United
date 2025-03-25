@@ -221,6 +221,16 @@ public class OpenAIClientBase
         {
             function = new()
             {
+                Name= "Screenshot", Description= "Take a screenshot of current web page and send it to user.", Parameters= new
+                {
+                    type="object", properties = new {}
+                }
+            }
+        });
+        tools.Add(new FunctionToolParamter()
+        {
+            function = new()
+            {
                 Name= "GoBack", Description= "Let the web browser go back to previous page.", Parameters= new
                 {
                     type="object", properties = new {}

@@ -1,6 +1,14 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Text;
 using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Functions;
+using AI_Proxy_Web.Helpers;
 using AI_Proxy_Web.Models;
+using Microsoft.Playwright;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SkiaSharp;
 
 namespace AI_Proxy_Web.Apis;
 
@@ -50,6 +58,7 @@ public class WebControlClient: IApiClient
                        * To open a new webpage, just call "OpenUrl" function and give it an url parameter. This should be your first action.
                        * Once you opened the webpage, get full html by function "GetPageHtml", and check what can you do next.
                        * If you need back to previous page, call "GoBack" function.
+                       * If you need send screenshot of current webpage to user, call "Screenshot" function. If current page need login, send Screenshot first, user can decide next step.
                        * You can use "ClickElement" and "InputElement" function to interact with the webpage.
                        * The current time is {DateTime.Now:yyyy-MM-dd HH:mm:ss}.
                        </SYSTEM_CAPABILITY>
@@ -110,6 +119,10 @@ public class WebControlClient: IApiClient
                     else if (call.Name == "GoBack")
                     {
                         await brower.GoBack();
+                    }else if (call.Name == "Screenshot")
+                    {
+                        var bytes = await brower.Screenshot();
+                        yield return FileResult.Answer(bytes, "png", ResultType.ImageBytes);
                     }else if (call.Name == "GetPageHtml")
                     {
                         var html = await brower.GetVisibleHtml();

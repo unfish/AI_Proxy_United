@@ -369,7 +369,7 @@ public class AutomationHelper
 
     public static readonly string[] AutomationFunctions = new[]
     {
-        "computer", "str_replace_editor", "bash", "OpenUrl", "GetPageHtml", "GoBack", "SendFile", "ClickElement", "InputElement"
+        "computer", "str_replace_editor", "bash", "OpenUrl", "GetPageHtml", "GoBack", "SendFile", "ClickElement", "InputElement", "Screenshot"
     };    
     
     private IBrowser? _browser;
