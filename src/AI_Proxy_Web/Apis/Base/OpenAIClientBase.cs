@@ -66,7 +66,24 @@ public class OpenAIClientBase
                 role = "system", content = chatContexts.SystemPrompt
             });
         }
+        var totalHtmls = 0;
+        foreach (var ctx in chatContexts.Contexts)
+        {
+            foreach (var qc in ctx.AC)
+            {
+                if (qc.Type == ChatType.FunctionCall)
+                {
+                    var qcalls = JsonConvert.DeserializeObject<List<FunctionCall>>(qc.Content);
+                    foreach (var call in qcalls)
+                    {
+                        if (call.Name == "GetPageHtml")
+                            totalHtmls++;
+                    }
+                }
+            }
+        }
 
+        var index = 0;
         foreach (var ctx in chatContexts.Contexts)
         {
             isImageMsg = ctx.QC.Any(x => x.Type == ChatType.图片Base64 || x.Type == ChatType.图片Url);
@@ -140,9 +157,12 @@ public class OpenAIClientBase
                     });
                     foreach (var call in acalls)
                     {
+                        if (call.Name == "GetPageHtml")
+                            index++;
                         msgs.Add(new ToolMessage()
                         {
-                            role = "tool", content = call.Result.ToString(),
+                            role = "tool",
+                            content = (call.Name != "GetPageHtml" || index == totalHtmls) ? call.Result.ToString() : "",
                             tool_call_id = call.Id
                         });
                     }
@@ -169,6 +189,72 @@ public class OpenAIClientBase
                 function = t
             }).ToList()
             : null;
+    }
+
+    protected List<ToolParamter> GetWebControlTools()
+    {
+        var tools = new List<ToolParamter>();
+        tools.Add(new FunctionToolParamter()
+        {
+            function = new()
+            {
+                Name= "OpenUrl", Description= "Use the current web browser to open an URL.", Parameters= new
+                {
+                    type="object", required=new[]{"url"}, properties = new
+                    {
+                        url = new{type="string", description="the full URL need to be opened."}
+                    }
+                }
+            }
+        });
+        tools.Add(new FunctionToolParamter()
+        {
+            function = new()
+            {
+                Name= "GetPageHtml", Description= "Get full html content of current web page.", Parameters= new
+                {
+                    type="object", properties = new {}
+                }
+            }
+        });
+        tools.Add(new FunctionToolParamter()
+        {
+            function = new()
+            {
+                Name= "GoBack", Description= "Let the web browser go back to previous page.", Parameters= new
+                {
+                    type="object", properties = new {}
+                }
+            }
+        });
+        tools.Add(new FunctionToolParamter()
+        {
+            function = new()
+            {
+                Name= "ClickElement", Description= "Click an element in page by css xpath selector.", Parameters= new
+                {
+                    type="object", required=new[]{"selector"}, properties = new
+                    {
+                        selector = new{type="string", description="The xpath selector for the element."}
+                    }
+                }
+            }
+        });
+        tools.Add(new FunctionToolParamter()
+        {
+            function = new()
+            {
+                Name= "InputElement", Description= "Input text to an element in page by css xpath selector.", Parameters= new
+                {
+                    type="object", required=new[]{"selector", "text"}, properties = new
+                    {
+                        selector = new{type="string", description="The xpath selector for the element."},
+                        text = new{type="string", description="The text content need input to the element."},
+                    }
+                }
+            }
+        });
+        return tools;
     }
 
     public async IAsyncEnumerable<Result> ProcessStreamResponse(HttpResponseMessage resp)

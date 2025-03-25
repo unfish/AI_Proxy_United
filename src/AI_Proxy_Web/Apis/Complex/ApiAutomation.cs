@@ -134,7 +134,7 @@ public class AutomationClient: IApiClient
 
         var times = 0; //计算循环次数，防止死循环
         var autoStopTimes = 20; //需要自动中止的次数
-        bool stopSign = false;
+        bool needRerun = false;
         while (true)
         {
             if (ApiBase.CheckStopSigns(input))
@@ -147,6 +147,7 @@ public class AutomationClient: IApiClient
             {
                 if (res.resultType == ResultType.FuncFrontend)
                 {
+                    needRerun = true;
                     var brower = await AutomationHelper.GetInstance(input.ChatContexts.SessionId, input.DisplayWidth.Value, input.DisplayHeight.Value);
                     var fr = (FrontFunctionResult)res;
                     var call = fr.result;
@@ -174,7 +175,7 @@ public class AutomationClient: IApiClient
                         await brower.GoBack();
                     }else if (call.Name == "GetPageHtml")
                     {
-                        var html = await brower.GetHtml();
+                        var html = await brower.GetVisibleHtml();
                         call.Result = Result.Answer(html);
                     }else if (call.Name == "computer")
                     {
@@ -328,6 +329,8 @@ public class AutomationClient: IApiClient
                 else
                     yield return res;
             }
+            if(!!needRerun)
+                break;
             if (times > autoStopTimes)
             {
                 yield return Result.Answer("已达到自动操作步数上限，自动中止。");
@@ -363,6 +366,11 @@ public class AutomationHelper
             return helper;
         }
     }
+
+    public static readonly string[] AutomationFunctions = new[]
+    {
+        "computer", "str_replace_editor", "bash", "OpenUrl", "GetPageHtml", "GoBack", "SendFile", "ClickElement", "InputElement"
+    };    
     
     private IBrowser? _browser;
     private IBrowserContext? _context;
@@ -403,6 +411,9 @@ public class AutomationHelper
         try
         {
             await page.GotoAsync(url);
+            // 等待页面完全加载
+            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
             return true;
         }
         catch
@@ -456,6 +467,129 @@ public class AutomationHelper
         return html;
     }
     
+    public async Task<string> GetVisibleHtml()
+    {
+        var page = _pages.Last();
+        // 在浏览器中执行JavaScript来获取可见DOM
+        string visibleHtml = await page.EvaluateAsync<string>(@"
+        () => {
+            // 判断元素是否可见的函数
+            function isVisible(element) {
+                if (!element) return false;
+                
+                // 检查元素是否在DOM中
+                if (!element.isConnected) return false;
+                
+                // 获取计算样式
+                const style = window.getComputedStyle(element);
+                
+                // 检查基本可见性属性
+                if (style.display === 'none') return false;
+                if (style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+                if (parseFloat(style.opacity) === 0) return false;
+                
+                // 检查元素尺寸
+                const rect = element.getBoundingClientRect();
+                if (rect.width === 0 && rect.height === 0) return false;
+                
+                // 检查是否被裁剪到不可见
+                if (style.overflow !== 'visible' && rect.width === 0 && rect.height === 0) return false;
+                
+                // 递归检查父元素
+                if (element.parentElement) {
+                    return isVisible(element.parentElement);
+                }
+                
+                return true;
+            }
+            
+            // 创建一个新的文档
+            const visibleDoc = document.implementation.createHTMLDocument('');
+            
+            // 处理head元素
+            const sourceHead = document.head;
+            const targetHead = visibleDoc.head;
+            
+            // 清空目标head
+            while (targetHead.firstChild) {
+                targetHead.removeChild(targetHead.firstChild);
+            }
+            
+            // 复制重要的head元素
+            for (const child of sourceHead.children) {
+                if (['TITLE', 'META'].includes(child.tagName)) {
+                    const newNode = child.cloneNode(true);
+                    targetHead.appendChild(newNode);
+                }
+            }
+            
+            // 处理body元素
+            const sourceBody = document.body;
+            const targetBody = visibleDoc.body;
+            
+            // 清空目标body
+            while (targetBody.firstChild) {
+                targetBody.removeChild(targetBody.firstChild);
+            }
+            
+            // 处理body的子元素
+            function processBodyChildren(sourceNode, targetParent) {
+                for (const child of sourceNode.childNodes) {
+                    // 处理元素节点
+                    if (child.nodeType === Node.ELEMENT_NODE) {
+                        // 跳过脚本和样式元素
+                        if (['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(child.tagName)) {
+                            continue;
+                        }
+                        
+                        // 检查可见性
+                        if (!isVisible(child)) {
+                            continue;
+                        }
+                        
+                        // 创建新元素
+                        const newElement = visibleDoc.createElement(child.tagName);
+                        
+                        // 复制属性
+                        for (const attr of child.attributes) {
+                            newElement.setAttribute(attr.name, attr.value);
+                        }
+                        
+                        // 添加到目标父节点
+                        targetParent.appendChild(newElement);
+                        
+                        // 递归处理子节点
+                        processBodyChildren(child, newElement);
+                    } 
+                    // 处理文本节点
+                    else if (child.nodeType === Node.TEXT_NODE) {
+                        const text = child.textContent.trim();
+                        if (text) {
+                            targetParent.appendChild(visibleDoc.createTextNode(child.textContent));
+                        }
+                    }
+                }
+            }
+            
+            // 处理body内容
+            processBodyChildren(sourceBody, targetBody);
+            
+            // 获取DOCTYPE
+            let doctype = '';
+            if (document.doctype) {
+                doctype = new XMLSerializer().serializeToString(document.doctype);
+            }
+            
+            // 返回HTML字符串
+            return doctype + visibleDoc.documentElement.outerHTML;
+        }
+        ");
+
+        var html = HtmlHelper.ExtractCoreDom(visibleHtml, false);
+        _lastActionTime = DateTime.Now;
+        return html;
+    }
+    
     public async Task MoveMouse(int x, int y)
     {
         var page = _pages.Last();
@@ -499,6 +633,32 @@ public class AutomationHelper
         await page.Keyboard.PressAsync(text);
         Thread.Sleep(_actionWaitTime);
         _lastActionTime = DateTime.Now;
+    }
+    
+    public async Task<bool> ClickElement(string selector)
+    {
+        var page = _pages.Last();
+        _lastActionTime = DateTime.Now;
+        if (await page.Locator(selector).CountAsync() == 1)
+        {
+            await page.Locator(selector).ClickAsync(new() { Force = true });
+            Thread.Sleep(_actionWaitTime);
+            return true;
+        }
+        return false;
+    }
+    
+    public async Task<bool> InputElement(string selector, string text)
+    {
+        var page = _pages.Last();
+        _lastActionTime = DateTime.Now;
+        if (await page.Locator(selector).CountAsync() == 1)
+        {
+            await page.Locator(selector).FillAsync(text, new() { Force = true });
+            Thread.Sleep(_actionWaitTime);
+            return true;
+        }
+        return false;
     }
     
     public async Task ScrollPage(int amount, string direction)

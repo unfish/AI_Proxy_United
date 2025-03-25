@@ -60,6 +60,7 @@ public enum M
     Grok3Thinking = 124,
     混元T1 = 125,
     
+    WebControl = 181,
     博查Web搜索 = 182,
     模型对战 = 183,
     模型群聊 = 184,

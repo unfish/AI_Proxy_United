@@ -1,4 +1,5 @@
 using System.Text;
+using AI_Proxy_Web.Apis;
 using AI_Proxy_Web.Apis.Base;
 using AI_Proxy_Web.Database;
 using AI_Proxy_Web.Functions.InternalFunctions;
@@ -223,8 +224,7 @@ public class FunctionRepository:IFunctionRepository
             }
 
             //Claude专用方法
-            if (call.Name == "computer" || call.Name == "str_replace_editor" || call.Name == "bash" ||
-                call.Name == "OpenUrl" || call.Name == "GetPageHtml" || call.Name == "GoBack" || call.Name == "SendFile")
+            if (AutomationHelper.AutomationFunctions.Contains(call.Name))
             {
                 call.Result = Result.Answer("DONE");
                 call.Type = FunctionType.Frontend;

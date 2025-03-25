@@ -98,6 +98,8 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
         var tools = GetToolParamters(input.WithFunctions, _functionRepository, out var funcPrompt);
         if (!string.IsNullOrEmpty(funcPrompt))
             input.ChatContexts.AddQuestion(funcPrompt, ChatType.System);
+        if (input.AgentSystem == "web")
+            tools = GetWebControlTools();
         var msgs = GetFullMessages(input.ChatContexts);
         return JsonConvert.SerializeObject(new
         {
@@ -352,7 +354,7 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
         client.DefaultRequestHeaders.Add("Authorization","Bearer "+APIKEY);
         client.Timeout = TimeSpan.FromSeconds(300);
         var url = hostUrl + "v1/audio/transcriptions";
-        var defaultPrompt = "日常问题，可能涉及工业品专用品牌或术语，[火也]是一个专有品牌名词。";
+        var defaultPrompt = "日常问题生活用语";
         var content = new MultipartFormDataContent
         {
             { new StringContent("whisper-1"), "model" }, //固定值
@@ -465,7 +467,7 @@ public class OpenAIAudioStreamClient : OpenAIClient, IAiWebSocketProxy
     public OpenAIAudioStreamClient(IHttpClientFactory httpClientFactory, IFunctionRepository functionRepository,  ConfigHelper configuration) : base(httpClientFactory, functionRepository)
     {
         hostUrl = configuration.GetConfig<string>("Service:OpenAI:WssHost");
-        apiKey = configuration.GetConfig<string>("Service:OpenAI:Key")??"";
+        apiKey = configuration.GetConfig<string>("Service:OpenAI:Key");
     }
 
     private BlockingCollection<Result>? _results;
