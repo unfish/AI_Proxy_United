@@ -450,6 +450,8 @@ public class AutomationHelper
         {
             var page = _pages.Last();
             var bytes = await page.ScreenshotAsync(new() { FullPage = fullscreen });
+            if (fullscreen)
+                return bytes;
             return ImageHelper.Compress(bytes, new SKSize(_pageWidth, _pageHeight), SKEncodedImageFormat.Png);
         }
         else
