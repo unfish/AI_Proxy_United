@@ -97,7 +97,7 @@ public class AutomationClient: IApiClient
                        * If webpage has a popup window, please close it first, or it may stop all actions.
                        * If webpage need login with QRCode, stop and wait user scan the code to login. Wait until user ask to go on.
                        * If you need back to previous page, call "GoBack" function.
-                       * If you need get full page html content, call "GetPageHtml" function, eg: get full article content, no need scroll and screenshot.
+                       * If you need get full page html content, call "GetPageHtml" function.
                        * If you need scroll down or scroll up the web page, use mouse scroll.
                        * When viewing a page make sure you scroll down to see everything before deciding something isn't available.
                        * When using your computer function calls, they take a while to run and send back to you. Where possible/feasible, try to chain multiple of these calls all into one function calls request.
@@ -106,6 +106,7 @@ public class AutomationClient: IApiClient
                       
                        <IMPORTANT>
                        * Try to chain multiple of these calls all into one function calls request, like click and type text.
+                       * Try to use GetPageHtml function to get full page content, for whole article or long search result list content, DO NOT scroll page and screenshot for it. Your contexts can only keep last two screenshots.
                        * Before any text input, ensure the target has focus.
                        * This computer can NOT open google.com, youtube, twitter/x.com eg.
                        </IMPORTANT>
@@ -133,7 +134,7 @@ public class AutomationClient: IApiClient
         input.DisplayHeight = 800;
 
         var times = 0; //计算循环次数，防止死循环
-        var autoStopTimes = 20; //需要自动中止的次数
+        var autoStopTimes = 30; //需要自动中止的次数
         while (true)
         {
             bool needRerun = false;
@@ -329,7 +330,8 @@ public class AutomationClient: IApiClient
                 else
                     yield return res;
             }
-            if(!!needRerun)
+
+            if (!needRerun)
                 break;
             if (times > autoStopTimes)
             {
@@ -449,7 +451,7 @@ public class AutomationHelper
         if (_pages.Count > 0)
         {
             var page = _pages.Last();
-            var bytes = await page.ScreenshotAsync(new() { FullPage = fullscreen });
+            var bytes = await page.ScreenshotAsync(new (){ FullPage = fullscreen});
             if (fullscreen)
                 return bytes;
             return ImageHelper.Compress(bytes, new SKSize(_pageWidth, _pageHeight), SKEncodedImageFormat.Png);
@@ -608,6 +610,9 @@ public class AutomationHelper
         _currentX = x;
         _currentY = y;
         await page.Mouse.ClickAsync(x, y);
+        // 等待页面完全加载
+        await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
         Thread.Sleep(_actionWaitTime);
         _lastActionTime = DateTime.Now;
     }
@@ -644,6 +649,9 @@ public class AutomationHelper
         if (await page.Locator(selector).CountAsync() == 1)
         {
             await page.Locator(selector).ClickAsync(new() { Force = true });
+            // 等待页面完全加载
+            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
             Thread.Sleep(_actionWaitTime);
             return true;
         }

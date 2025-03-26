@@ -11,14 +11,14 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Gemini, "Gemini2 Pro", "强烈推荐：Gemini 2.0 Pro是Google推出的最新多模态大模型实验版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错，据说代码能力也不错。目前是免费的，但限流比较低。", 5, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canProcessAudio:true, canUseFunction:true, priceIn: 0, priceOut: 0)]
+[ApiClass(M.Gemini, "Gemini2 Pro", "强烈推荐：Gemini 2.5 Pro是Google推出的最新多模态大模型实验版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错，据说代码能力也不错。目前是免费的，但限流比较低。", 5, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canProcessAudio:true, canUseFunction:true, priceIn: 0, priceOut: 0)]
 public class ApiGoogleGemini:ApiBase
 {
     protected GoogleGeminiClient _client;
     public ApiGoogleGemini(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client = serviceProvider.GetRequiredService<GoogleGeminiClient>();
-        _client.SetModel("gemini-2.0-pro-exp-02-05");
+        _client.SetModel("gemini-2.5-pro-exp-03-25");
     }
     
     /// <summary>
@@ -121,6 +121,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
         if (!string.IsNullOrEmpty(input.ChatContexts.SystemPrompt))
             sys = new Message()
                 {role = "user", parts = new[] {new {text = input.ChatContexts.SystemPrompt}}};
+        var resultImageIndex = 0;
         foreach (var ctx in input.ChatContexts.Contexts)
         {
             List<object> contents = new List<object>();
@@ -174,13 +175,17 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                     {
                         if (tk["resultType"].Value<int>() == (int)ResultType.ImageBytes)
                         {
-                            contents.Add(new
+                            resultImageIndex++;
+                            if (resultImageIndex >= input.ChatContexts.ResultImagesCount - 2)//带上最近3张图片
                             {
-                                inline_data = new
+                                contents.Add(new
                                 {
-                                    mime_type =  "image/png", data = tk["result"].Value<string>()
-                                }
-                            });
+                                    inline_data = new
+                                    {
+                                        mime_type =  "image/png", data = tk["result"].Value<string>()
+                                    }
+                                });
+                            }
                         }else if (tk["resultType"].Value<int>() == (int)ResultType.Answer)
                         {
                             contents.Add(new { text = tk["result"].Value<string>()});

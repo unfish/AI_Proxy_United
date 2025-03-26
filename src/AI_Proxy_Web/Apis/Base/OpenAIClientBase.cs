@@ -66,24 +66,8 @@ public class OpenAIClientBase
                 role = "system", content = chatContexts.SystemPrompt
             });
         }
-        var totalHtmls = 0;
-        foreach (var ctx in chatContexts.Contexts)
-        {
-            foreach (var qc in ctx.AC)
-            {
-                if (qc.Type == ChatType.FunctionCall)
-                {
-                    var qcalls = JsonConvert.DeserializeObject<List<FunctionCall>>(qc.Content);
-                    foreach (var call in qcalls)
-                    {
-                        if (call.Name == "GetPageHtml")
-                            totalHtmls++;
-                    }
-                }
-            }
-        }
-
-        var index = 0;
+        var resultImageIndex = 0;
+        var resultHtmlIndex = 0;
         foreach (var ctx in chatContexts.Contexts)
         {
             isImageMsg = ctx.QC.Any(x => x.Type == ChatType.图片Base64 || x.Type == ChatType.图片Url);
@@ -157,14 +141,55 @@ public class OpenAIClientBase
                     });
                     foreach (var call in acalls)
                     {
-                        if (call.Name == "GetPageHtml")
-                            index++;
-                        msgs.Add(new ToolMessage()
+                        if (call.Result != null && call.Result.resultType == ResultType.ImageBytes)
                         {
-                            role = "tool",
-                            content = (call.Name != "GetPageHtml" || index == totalHtmls) ? call.Result.ToString() : "",
-                            tool_call_id = call.Id
-                        });
+                            resultImageIndex++;
+                            if (resultImageIndex >= chatContexts.ResultImagesCount - 2) //带上最近3张图片
+                            {
+                                var result = (FileResult)call.Result;
+                                msgs.Add(new ToolMessage()
+                                {
+                                    role = "tool",
+                                    content = new[]
+                                    {
+                                        new
+                                        {
+                                            type = "image",
+                                            source = new
+                                            {
+                                                type = "base64",
+                                                media_type = result.fileExt == "png" ? "image/png" : "image/jpeg",
+                                                data = result.ToString()
+                                            }
+                                        }
+                                    },
+                                    tool_call_id = call.Id
+                                });
+                            }
+                            else
+                            {
+                                msgs.Add(new ToolMessage()
+                                {
+                                    role = "tool",
+                                    content = "",
+                                    tool_call_id = call.Id
+                                });
+                            }
+                        }
+                        else
+                        {
+                            if (call.Name == "GetPageHtml")
+                                resultHtmlIndex++;
+                            msgs.Add(new ToolMessage()
+                            {
+                                role = "tool",
+                                content = (call.Name != "GetPageHtml" ||
+                                           resultHtmlIndex == chatContexts.ResultFullHtmlCount)
+                                    ? call.Result.ToString()
+                                    : "",
+                                tool_call_id = call.Id
+                            });
+                        }
                     }
                 }
             }
@@ -608,7 +633,7 @@ public class OpenAIClientBase
     }
     protected class ToolMessage:Message
     {
-        public string content { get; set; } = string.Empty;
+        public object? content { get; set; }
         public string? tool_call_id { get; set; } = null;
     }
     protected class AssistantMessage:Message

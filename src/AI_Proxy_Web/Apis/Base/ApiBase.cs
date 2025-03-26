@@ -176,8 +176,13 @@ public abstract class ApiBase
         input.ChatContexts.AddQuestions(input.QuestionContents); //将本次问题合并进完整上下文
         input.QuestionContents.Clear();
 
+        if (input.ChatContexts.Contexts.Last().AC.Count > 0)
+        {
+            input.ChatContexts.Contexts.Add(ChatContext.New(new List<ChatContext.ChatContextContent>()));
+        }
         //前台没有指定使用特定函数的时候，根据输入的词自动加载可用函数
-        if (ChatModel.CanUseFunction(input.ChatModel) && (input.WithFunctions == null || input.WithFunctions.Length == 0))
+        if (ChatModel.CanUseFunction(input.ChatModel) &&
+            (input.WithFunctions == null || input.WithFunctions.Length == 0))
         {
             input.WithFunctions = _functionRepository.GetFunctionNamesByScene(input.ChatContexts);
         }
@@ -187,7 +192,7 @@ public abstract class ApiBase
         {
             input.UserToken = _logRepository.GenerateTokenByFeishuUserId(input.External_UserId);
         }
-
+        
         if (dp?.CanProcessImage != true && input.ChatContexts.HasImage())
         {
             yield return Result.Error("当前模型不支持图片处理。");
@@ -349,6 +354,11 @@ public abstract class ApiBase
         //保存上下文
         if (multiMediaResult != null)
         {
+            foreach (var result in multiMediaResult.result)
+            {
+                if (result.resultType == ResultType.ImageBytes)
+                    input.ChatContexts.ResultImagesCount++;
+            }
             SaveChatResultContexts(ResultType.MultiMediaResult, multiMediaResult.ToString(), input);
         }
         else
@@ -373,6 +383,15 @@ public abstract class ApiBase
             await foreach (var res2 in _functionRepository.ProcessChatFunctionCalls(functionCalls.result, input))
             {
                 yield return res2;
+            }
+
+            //记录上下文结果中图片和网页全文的个数并保存在Contexts中，生成提交会话的时候，这两个类型只保留最新的两条，历史的可以忽略
+            foreach (var call in functionCalls.result)
+            {
+                if (call.Name == "GetPageHtml")
+                    input.ChatContexts.ResultFullHtmlCount++;
+                else if (call.Result != null && call.Result.resultType == ResultType.ImageBytes)
+                    input.ChatContexts.ResultImagesCount++;
             }
             ReplaceChatResultContexts(ResultType.FunctionCalls, functionCalls.ToString(), input);
             if (!input.IgnoreAutoContexts && functionCalls.result.Any(t => t.NeedRecall)) //自动重新发起调用，递归调用自己，IgnoreAutoContexts为true的时候回答不会添加进上下文，重新发起调用会死循环

@@ -65,6 +65,7 @@ public class WebControlClient: IApiClient
                       
                        <IMPORTANT>
                        * Try to chain multiple of these calls all into one function calls request, like click and type text.
+                       * Any css xpath selector to click or input should be unique in the page.
                        * This computer can NOT open google.com, youtube, twitter/x.com eg.
                        </IMPORTANT>
                       
@@ -142,7 +143,8 @@ public class WebControlClient: IApiClient
                 else
                     yield return res;
             }
-            if(!needRerun)
+
+            if (!needRerun)
                 break;
             if (times > autoStopTimes)
             {

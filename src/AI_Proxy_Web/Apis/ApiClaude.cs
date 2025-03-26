@@ -133,27 +133,12 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
         List<Message> msgs = new List<Message>();
-        var totalImages = 0;
+        var resultImageIndex = 0;
+        var resultHtmlIndex = 0;
+        List<object> contents = new List<object>();
         foreach (var ctx in input.ChatContexts.Contexts)
         {
-            foreach (var qc in ctx.AC)
-            {
-                if (qc.Type == ChatType.FunctionCall)
-                {
-                    var qcalls = JsonConvert.DeserializeObject<List<FunctionCall>>(qc.Content);
-                    foreach (var call in qcalls)
-                    {
-                        if (call.Result?.resultType == ResultType.ImageBytes)
-                            totalImages++;
-                    }
-                }
-            }
-        }
-
-        var index = 0;
-        foreach (var ctx in input.ChatContexts.Contexts)
-        {
-            List<object> contents = new List<object>();
+            contents.Clear();
             foreach (var qc in ctx.QC)
             {
                 if (qc.Type == ChatType.图片Base64)
@@ -195,8 +180,8 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                     {
                         if (call.Result?.resultType == ResultType.ImageBytes)
                         {
-                            index++;
-                            if(index > totalImages-2){
+                            resultImageIndex++;
+                            if(resultImageIndex >= input.ChatContexts.ResultImagesCount-2){ //带上最近3张图片
                                 var result = (FileResult)call.Result;
                                 contents.Add(new ToolResponse()
                                 {
@@ -219,6 +204,17 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                             {
                                 contents.Add(new ToolResponse() { type = "tool_result", tool_use_id = call.Id, content = "" });
                             }
+                        }
+                        else if (call.Name == "GetPageHtml")
+                        {
+                            resultHtmlIndex++;
+                            contents.Add(new ToolResponse()
+                            {
+                                type = "tool_result", tool_use_id = call.Id,
+                                content = resultHtmlIndex == input.ChatContexts.ResultFullHtmlCount //只保留最后一条
+                                    ? call.Result?.ToString()
+                                    : ""
+                            });
                         }
                         else
                         {

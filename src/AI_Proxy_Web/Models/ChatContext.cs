@@ -14,6 +14,9 @@ public class ChatContexts
 
     public List<KeyValuePair<string, string>> AgentResults { get; set; } = new List<KeyValuePair<string, string>>();
     
+    public int ResultImagesCount { get; set; } = 0;
+    public int ResultFullHtmlCount { get; set; } = 0;
+    
     /// <summary>
     /// 初始化一个空的上下文
     /// </summary>
