@@ -151,7 +151,18 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                 }
                 else if (qc.Type == ChatType.文本 || qc.Type == ChatType.提示模板|| qc.Type== ChatType.图书全文)
                 {
-                    contents.Add(new { text = qc.Content });
+                    if (qc.Content.StartsWith("https://www.youtube.com/"))
+                    {
+                        contents.Add(new
+                        {
+                            file_data = new
+                            {
+                                file_uri = qc.Content
+                            }
+                        });
+                        contents.Add(new { text = "详细总结一下这条视频的内容。" });
+                    }else
+                       contents.Add(new { text = qc.Content });
                 }
                 else if (qc.Type == ChatType.缓存ID)
                 {

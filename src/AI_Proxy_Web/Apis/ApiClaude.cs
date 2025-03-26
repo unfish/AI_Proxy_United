@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Claude中杯, "Claude 3.7", "Claude 3.7 Sonet是Open AI目前最强劲的竞争对手，代码能力最强，支持图文，200K上下文长度，价格跟GPT4o一样，比较适中。", 3, canProcessImage:true, canProcessMultiImages:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
+[ApiClass(M.Claude中杯, "Claude 3.7", "Claude 3.7 Sonet是Open AI目前最强劲的竞争对手，代码能力最强，支持图文，200K上下文长度，价格跟GPT4o一样，比较适中。", 3, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
 public class ApiClaude:ApiBase
 {
     protected ClaudeClient _client;
@@ -45,7 +45,7 @@ public class ApiClaude:ApiBase
     
 }
 
-[ApiClass(M.Claude小杯, "Claude小杯*", "强烈推荐：Claude 3.5 Haiku小杯是Open AI目前最强劲的竞争对手，体积小，推理能力强，支持图文，200K上下文长度，价格便宜速度极快，能力介于GPT4o mini和4o之间。", 2,  canProcessImage:true, canProcessMultiImages:true, canUseFunction:true, priceIn: 1.8, priceOut: 9)]
+[ApiClass(M.Claude小杯, "Claude小杯*", "强烈推荐：Claude 3.5 Haiku小杯是Open AI目前最强劲的竞争对手，体积小，推理能力强，支持图文，200K上下文长度，价格便宜速度极快，能力介于GPT4o mini和4o之间。", 2,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 1.8, priceOut: 9)]
 public class ApiClaude3Haiku : ApiClaude
 {
     public ApiClaude3Haiku(IServiceProvider serviceProvider):base(serviceProvider)
@@ -54,7 +54,7 @@ public class ApiClaude3Haiku : ApiClaude
     }
 }
 
-[ApiClass(M.ClaudeAgent, "Claude RPA", "Claude 3.7 RPA版可以操作一个虚拟浏览器，通过自动分解操作步骤并控制浏览器一步一步进行点击或输入的方式进行一系列自主操作来完成用户任务，需要有客户端来调用并负责实际完成任务。", 320, type: ApiClassTypeEnum.辅助模型,  canProcessImage:true, canProcessMultiImages:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
+[ApiClass(M.ClaudeAgent, "Claude RPA", "Claude 3.7 RPA版可以操作一个虚拟浏览器，通过自动分解操作步骤并控制浏览器一步一步进行点击或输入的方式进行一系列自主操作来完成用户任务，需要有客户端来调用并负责实际完成任务。", 320, type: ApiClassTypeEnum.辅助模型,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
 public class ApiClaudeAgent : ApiClaude
 {
     public ApiClaudeAgent(IServiceProvider serviceProvider):base(serviceProvider)
@@ -64,7 +64,7 @@ public class ApiClaudeAgent : ApiClaude
     }
 }
 
-[ApiClass(M.ClaudeEditor, "Claude Editor", "Claude 3.7 Editor版可以操作操作指定的文件，自主查看文件当前内容，并根据需要完成文件的内容编辑指令，需要有客户端来调用并负责实际完成任务。", 321, type: ApiClassTypeEnum.辅助模型,  canProcessImage:true, canProcessMultiImages:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
+[ApiClass(M.ClaudeEditor, "Claude Editor", "Claude 3.7 Editor版可以操作操作指定的文件，自主查看文件当前内容，并根据需要完成文件的内容编辑指令，需要有客户端来调用并负责实际完成任务。", 321, type: ApiClassTypeEnum.辅助模型, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
 public class ApiClaudeEditor : ApiClaude
 {
     public ApiClaudeEditor(IServiceProvider serviceProvider):base(serviceProvider)
@@ -74,7 +74,7 @@ public class ApiClaudeEditor : ApiClaude
     }
 }
 
-[ApiClass(M.ClaudeThinking, "Claude Thinking", "Claude 3.7 sonet推理版使用带推理能力的Claude模型，适合复杂的编程任务及数理问题。", 122, type: ApiClassTypeEnum.推理模型, canProcessImage:true, canProcessMultiImages:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
+[ApiClass(M.ClaudeThinking, "Claude Thinking", "Claude 3.7 sonet推理版使用带推理能力的Claude模型，适合复杂的编程任务及数理问题。", 122, type: ApiClassTypeEnum.推理模型, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
 public class ApiClaudeThinking : ApiClaude
 {
     public ApiClaudeThinking(IServiceProvider serviceProvider):base(serviceProvider)
@@ -147,6 +147,20 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                     {
                         Type = "base64", MediaType = string.IsNullOrEmpty(qc.MimeType) ? "image/jpeg" : qc.MimeType, Data = qc.Content
                     }});
+                }else if (qc.Type == ChatType.文件Bytes)
+                {
+                    if (qc.FileName.ToLower().EndsWith(".pdf"))
+                    {
+
+                        contents.Add(new VisionMessageContent()
+                        {
+                            Type = "document", Source = new VisionMessageSource()
+                            {
+                                Type = "base64", MediaType = "application/pdf", Data = qc.Content
+                            },
+                            CacheControl = new { type = "ephemeral" }
+                        });
+                    }
                 }
                 else if (qc.Type == ChatType.文本|| qc.Type== ChatType.提示模板|| qc.Type== ChatType.图书全文)
                 {
@@ -286,7 +300,10 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
         var think = ExtraTools.Contains(ExtraTool.Thinking)
             ? new { type = "enabled", budget_tokens = max_tokens / 2 }
             : null;
-        var system = input.ChatContexts.SystemPrompt;
+        var system = new[]
+        {
+            new { type = "text", text = input.ChatContexts.SystemPrompt, cache_control = new { type = "ephemeral" } }
+        };
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         return JsonConvert.SerializeObject(new
         {
@@ -347,6 +364,8 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
         public string? Text { get; set; }
         [JsonProperty("source")]
         public VisionMessageSource Source  { get; set; }
+        [JsonProperty("cache_control")]
+        public object? CacheControl { get; set; }
     }
     protected class VisionMessageSource
     {

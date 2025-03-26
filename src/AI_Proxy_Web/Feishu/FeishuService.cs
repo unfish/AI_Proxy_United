@@ -882,6 +882,12 @@ public class FeishuService: BaseFeishuService, IFeishuService
         await AskGpt(ChatContext.NewContentList(text), user_id, no_function, specialModel);
     }
 
+    private bool IsValidUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out _) && 
+               (url.StartsWith("http://") || url.StartsWith("https://"));
+    }
+    
     /// <summary>
     /// 核心方法，处理GPT应答
     /// </summary>
@@ -900,7 +906,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
                 SendMessage(user_id, res.message);
             return;
         }
-        if (text.StartsWith("https://"))
+        if (IsValidUrl(text) && !text.StartsWith("https://www.youtube.com/"))
         {
             SendMessage(user_id, GetLinkActionCardMessage(text, false),
                 FeishuMessageType.Interactive);
