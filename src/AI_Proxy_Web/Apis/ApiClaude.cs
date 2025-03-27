@@ -60,7 +60,8 @@ public class ApiClaudeAgent : ApiClaude
     public ApiClaudeAgent(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
-        _client.ExtraTools = new[] { ClaudeClient.ExtraTool.Computer };
+        _client.ExtraTools = new[]
+            { ClaudeClient.ExtraTool.Computer, ClaudeClient.ExtraTool.Text_Editor, ClaudeClient.ExtraTool.Bash };
     }
 }
 
