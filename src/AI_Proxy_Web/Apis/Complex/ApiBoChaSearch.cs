@@ -24,30 +24,7 @@ public class ApiBoChaSearch:ApiBase
 
     protected override async IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input)
     {
-        var res = await _client.SendMessage(input);
-        if (res.resultType == ResultType.SearchResult)
-        {
-            var _apiFactory = _serviceProvider.GetRequiredService<IApiFactory>();
-            var api2 = _apiFactory.GetService(DI.GetApiClassAttributeId(typeof(ApiJinaAi)));
-            var result = ((SearchResult)res).result;
-            await Parallel.ForEachAsync(
-                result.Where(dto => !string.IsNullOrEmpty(dto.url) && dto.url.StartsWith("https://")),
-                new ParallelOptions() { MaxDegreeOfParallelism = 10 },
-                async (dto, token) =>
-                {
-                    var res2 = await api2.ProcessQuery(new ApiChatInputIntern()
-                        { ChatContexts = ChatContexts.New(dto.url)});
-
-                    if (res2.resultType == ResultType.JinaArticle)
-                    {
-                        var con = ((JinaArticleResult)res2).result.Content;
-                        if (!string.IsNullOrEmpty(con))
-                            dto.content = con;
-                    }
-                });
-        }
-
-        yield return res;
+        yield return await DoProcessQuery(input);
     }
 
     protected override async Task<Result> DoProcessQuery(ApiChatInputIntern input)
@@ -64,7 +41,7 @@ public class ApiBoChaSearch:ApiBase
                 async (dto, token) =>
                 {
                     var res2 = await api2.ProcessQuery(new ApiChatInputIntern()
-                        { ChatContexts = ChatContexts.New(dto.url) });
+                        { ChatContexts = ChatContexts.New(dto.url), ChatModel = (int)M.JinaReader});
 
                     if (res2.resultType == ResultType.JinaArticle)
                     {

@@ -41,7 +41,7 @@ public class ApiGoogleSearch:ApiBase
                 async (dto, token) =>
                 {
                     var res2 = await api2.ProcessQuery(new ApiChatInputIntern()
-                        { ChatContexts = ChatContexts.New(dto.url) });
+                        { ChatContexts = ChatContexts.New(dto.url), ChatModel = (int)M.JinaReader });
 
                     if (res2.resultType == ResultType.JinaArticle)
                     {
