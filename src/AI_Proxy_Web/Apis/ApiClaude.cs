@@ -272,7 +272,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
         if (ExtraTools.Contains(ExtraTool.Text_Editor))
         {
             tools.Add(new { type = "text_editor_20250124", name = "str_replace_editor" });
-            tools.Add(new{name="SendFile", description="Send file content to user.", input_schema=new
+            tools.Add(new{name="SendFile", description="Send file to user.", input_schema=new
             {
                 type="object", required=new[]{"path"}, properties = new
                 {

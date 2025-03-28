@@ -248,16 +248,24 @@ public class AutomationClient: IApiClient
                             SaveFile(fullPath, o["file_text"].Value<string>());
                         }else if (command == "view")
                         {
-                            var text = File.ReadAllText(fullPath);
-                            if (o["view_range"] is not null)
+                            if (!File.Exists(fullPath))
                             {
-                                var ranges = o["view_range"].Values<int>().ToArray();
-                                var lines = text.Split('\n');
-                                var min = Math.Max(0, ranges[0] - 1);
-                                var max = Math.Min(lines.Length, ranges[1] == -1 ? lines.Length : ranges[1] - 1);
-                                text = string.Join("\n", lines[new Range(min, max)]);
+                                call.Result = Result.Answer("Error: File not exist.");
                             }
-                            call.Result = Result.Answer(text);
+                            else
+                            {
+                                var text = File.ReadAllText(fullPath);
+                                if (o["view_range"] is not null)
+                                {
+                                    var ranges = o["view_range"].Values<int>().ToArray();
+                                    var lines = text.Split('\n');
+                                    var min = Math.Max(0, ranges[0] - 1);
+                                    var max = Math.Min(lines.Length, ranges[1] == -1 ? lines.Length : ranges[1] - 1);
+                                    text = string.Join("\n", lines[new Range(min, max)]);
+                                }
+
+                                call.Result = Result.Answer(text);
+                            }
                         }else if (command == "str_replace")
                         {
                             var text = File.ReadAllText(fullPath);
