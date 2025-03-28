@@ -21,7 +21,7 @@ public class ApiSearchAndSummarize:ApiBase
         var apiFactory = _serviceProvider.GetRequiredService<IApiFactory>();
         var searchApi = apiFactory.GetService(_SearchModel);
         var res = await searchApi.ProcessQuery(input);
-        if (res.resultType != ResultType.Answer)
+        if (res.resultType != ResultType.SearchResult)
         {
             searchApi = apiFactory.GetService(M.博查Web搜索);
             res = await searchApi.ProcessQuery(input);
