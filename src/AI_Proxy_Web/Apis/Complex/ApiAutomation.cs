@@ -167,9 +167,16 @@ public class AutomationClient: IApiClient
                         var path =  o["path"].Value<string>();
                         var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"auto_files/"+ input.External_UserId + "/",
                             path);
-                        var bytes = File.ReadAllBytes(fullPath);
-                        yield return FileResult.Answer(bytes, Path.GetExtension(fullPath), ResultType.FileBytes,
-                            Path.GetFileName(fullPath));
+                        if (File.Exists(fullPath))
+                        {
+                            var bytes = File.ReadAllBytes(fullPath);
+                            yield return FileResult.Answer(bytes, Path.GetExtension(fullPath), ResultType.FileBytes,
+                                Path.GetFileName(fullPath));
+                        }
+                        else
+                        {
+                            yield return Result.Error("文件不存在");
+                        }
                     }
                     else if (call.Name == "GoBack")
                     {
