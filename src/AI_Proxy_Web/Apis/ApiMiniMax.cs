@@ -65,7 +65,7 @@ public class ApiMiniMaxLarge : ApiMiniMax
 }
 
 
-[ApiClass(M.MiniMax画图, "MiniMax画图", "MiniMax文生图模型。", 214, type: ApiClassTypeEnum.画图模型, priceIn: 0, priceOut: 2)]
+[ApiClass(M.MiniMax画图, "MiniMax画图", "MiniMax文生图模型。支持图生图，提供一张图片实现主体参考文生图功能。", 214, type: ApiClassTypeEnum.画图模型, canProcessImage:true, priceIn: 0, priceOut: 2)]
 public class ApiMiniMaxImage:ApiBase
 {
     protected MiniMaxClient _client;
@@ -259,15 +259,25 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         var url = "https://api.minimax.chat/v1/image_generation";
         var _client = _httpClientFactory.CreateClient();
         _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {APIKEY}");
+        var prompt = input.ChatContexts.Contexts.Last().QC.Last(t => t.Type == ChatType.文本).Content;
+        var img = input.ChatContexts.Contexts.Last().QC.Last(t => t.Type == ChatType.图片Base64)?.Content;
+        var imgRef = img == null
+            ? null
+            : new
+            {
+                type = "character", image_file = "data:image/jpeg;base64," + img
+            };
+        var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         var msg = JsonConvert.SerializeObject(new
         {
             model = "image-01",
-            prompt = input.ChatContexts.Contexts.Last().QC.Last().Content,
+            prompt = prompt,
+            subject_reference = imgRef,
             response_format = "base64",
             n = 1,
             prompt_optimizer = true,
             aspect_ratio = GetExtraOptions(input.External_UserId)[0].CurrentValue
-        });
+        }, jSetting);
         var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new StringContent(msg, Encoding.UTF8, "application/json")
@@ -426,7 +436,7 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         var formats = new[] { "mp3", "wav", "pcm", "flac" };
         return JsonConvert.SerializeObject(new
         {
-            model = "speech-02-hd-preview",
+            model = "speech-02-hd",
             text = text,
             voice_setting = new
             {

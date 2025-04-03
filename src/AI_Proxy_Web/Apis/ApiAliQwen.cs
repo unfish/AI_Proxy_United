@@ -54,13 +54,15 @@ public class ApiAliQwen:ApiBase
     }
 }
 
-[ApiClass(M.通义小杯, "通义小杯", "阿里通义千问 2.5 Plus，号称中文能力超过GPT 4 Turbo。支持图文问答，识图能力极强，支持function call，低价格高速度。", 11,  canProcessImage: true,
-    canProcessMultiImages: true, canUseFunction: true, priceIn: 0.8, priceOut: 2)]
-public class ApiAliQwenPlus : ApiAliQwen
+[ApiClass(M.QvQ_Max, "通义QvQ", "阿里通义千问 QvQ Max，支持视觉推理。", 126, ApiClassTypeEnum.推理模型,  canProcessImage: true,
+    canProcessMultiImages: true, priceIn: 8, priceOut: 32)]
+public class ApiAliQwenQvQ : ApiAliQwen
 {
-    public ApiAliQwenPlus(IServiceProvider serviceProvider) : base(serviceProvider)
+    public ApiAliQwenQvQ(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _client.SetModel("qwen-plus-latest");
+        _client.SetModel("qvq-max");
+        _client.SetVisionModel("qvq-max");
+        _client.MaxTokens = 8192;
     }
 }
 
@@ -70,6 +72,7 @@ public class ApiAliDeepSeekR1 : ApiAliQwen
     public ApiAliDeepSeekR1(IServiceProvider serviceProvider) : base(serviceProvider)
     {
         _client.SetModel("deepseek-r1");
+        _client.MaxTokens = 8192;
     }
 }
 
@@ -95,10 +98,16 @@ public class AliQwenClient:OpenAIClientBase, IApiClient
     private static String imgEmbedUrl = "https://dashscope.aliyuncs.com/api/v1/services/embeddings/multimodal-embedding/multimodal-embedding";
     private string APIKEY;//从开放平台控制台中获取
     private string modelName = "qwen-max-latest";
-
+    private string visionModelName = "qwen-vl-max-latest";
+    public int MaxTokens = 4096;
     public void SetModel(string name)
     {
         modelName = name;
+    }
+
+    public void SetVisionModel(string visionModel)
+    {
+        visionModelName = visionModel;
     }
     
     #region 通义千问
@@ -111,7 +120,7 @@ public class AliQwenClient:OpenAIClientBase, IApiClient
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
         bool isImageMsg = IsImageMsg(input.ChatContexts);
-        var model = isImageMsg ? "qwen-vl-max-latest" : modelName;
+        var model = isImageMsg ? visionModelName : modelName;
         var tools = GetToolParamters(input.WithFunctions, _functionRepository, out var funcPrompt);
         if (!string.IsNullOrEmpty(funcPrompt))
             input.ChatContexts.AddQuestion(funcPrompt, ChatType.System);
@@ -124,7 +133,7 @@ public class AliQwenClient:OpenAIClientBase, IApiClient
             temperature = input.Temprature,
             tools = tools,
             stream,
-            max_tokens =  isImageMsg ? 2000: 4096,
+            max_tokens =  MaxTokens,
             user = input.External_UserId
         }, jSetting);
     }

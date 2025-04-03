@@ -61,8 +61,20 @@ public class ApiWenXinDeepSeekR1 : ApiWenXin
     public ApiWenXinDeepSeekR1(IServiceProvider serviceProvider) : base(serviceProvider)
     {
         _client.SetModel("deepseek-r1");
+        _client.MaxTokens = 8192;
     }
 }
+
+[ApiClass(M.Baidu_X1, "文心X1", "文心一言X1推理版。", 127, type: ApiClassTypeEnum.推理模型, priceIn: 4, priceOut: 16)]
+public class ApiWenXinX1 : ApiWenXin
+{
+    public ApiWenXinX1(IServiceProvider serviceProvider) : base(serviceProvider)
+    {
+        _client.SetModel("ernie-x1-32k-preview");
+        _client.MaxTokens = 8192;
+    }
+}
+
 
 /// <summary>
 /// 文心一言大模型接口
@@ -98,6 +110,7 @@ public class WenXinClient:OpenAIClientBase, IApiClient
     private string AccessTokenCacheKey;
     public static DateTime NextRefreshTime = DateTime.Now;
     private string modelName = "ernie-4.5-8k-preview";
+    public int MaxTokens = 2048;
 
     public void SetModel(string name)
     {
@@ -171,7 +184,7 @@ public class WenXinClient:OpenAIClientBase, IApiClient
             temperature = input.Temprature,
             stream,
             tools,
-            max_completion_tokens = 2048,
+            max_completion_tokens = MaxTokens,
             user = input.External_UserId,
             web_search = new{enable=true}
         }, jSetting);

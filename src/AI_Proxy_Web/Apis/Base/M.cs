@@ -59,6 +59,8 @@ public enum M
     DeepClaude = 123,
     Grok3Thinking = 124,
     混元T1 = 125,
+    QvQ_Max = 126,
+    Baidu_X1 = 127,
     
     WebControl = 181,
     博查Web搜索 = 182,

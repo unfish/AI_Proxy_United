@@ -138,6 +138,20 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                             mime_type = mimeType, data = qc.Content
                         }
                     });
+                } 
+                else if (qc.Type == ChatType.文件Bytes)
+                {
+                    if (qc.FileName.ToLower().EndsWith(".pdf"))
+                    {
+                        contents.Add(new
+                        {
+                            inline_data = new
+                            {
+                                mime_type = "application/pdf",
+                                data = qc.Bytes != null ? Convert.ToBase64String(qc.Bytes) : qc.Content
+                            }
+                        });
+                    }
                 }
                 else if (qc.Type == ChatType.图片Url || qc.Type== ChatType.语音Url || qc.Type== ChatType.视频Url || qc.Type== ChatType.文件Url)
                 {

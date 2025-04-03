@@ -152,12 +152,12 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                 {
                     if (qc.FileName.ToLower().EndsWith(".pdf"))
                     {
-
                         contents.Add(new VisionMessageContent()
                         {
                             Type = "document", Source = new VisionMessageSource()
                             {
-                                Type = "base64", MediaType = "application/pdf", Data = qc.Content
+                                Type = "base64", MediaType = "application/pdf",
+                                Data = qc.Bytes != null ? Convert.ToBase64String(qc.Bytes) : qc.Content
                             },
                             CacheControl = new { type = "ephemeral" }
                         });
