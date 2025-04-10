@@ -44,6 +44,17 @@ public class ApiStepFun:ApiBase
     
 }
 
+[ApiClass(M.阶跃R1Mini, "阶跃R1", "阶跃星辰step-r1-v-mini，图文推理模型。", 128, type: ApiClassTypeEnum.推理模型, canProcessImage: true,
+    canProcessMultiImages: true, canUseFunction: false, priceIn: 38, priceOut: 120)]
+public class ApiStepFunR1Mini : ApiStepFun
+{
+    public ApiStepFunR1Mini(IServiceProvider serviceProvider) : base(serviceProvider)
+    {
+        _client.ModelName = "step-r1-v-mini";
+        _client.VisionModelName = "step-r1-v-mini";
+    }
+}
+
 
 [ApiClass(M.阶跃画图, "阶跃画图", "阶跃星辰1x画图模型。", 203, type: ApiClassTypeEnum.画图模型, priceIn: 0, priceOut: 0.1)]
 public class ApiStepFunImage:ApiStepFun
@@ -100,6 +111,8 @@ public class StepFunClient:OpenAIClientBase, IApiClient
     private static String hostUrl = "https://api.stepfun.com/v1/chat/completions";
 
     private String APIKEY;//从开放平台控制台中获取
+    public string ModelName = "step-2-16k";
+    public string VisionModelName = "step-1o-turbo-vision";
     
     /// <summary>
     /// 要增加上下文功能通过input里面的history数组变量，数组中每条记录是user和bot的问答对
@@ -110,7 +123,7 @@ public class StepFunClient:OpenAIClientBase, IApiClient
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
         bool isImageMsg = IsImageMsg(input.ChatContexts);
-        var model = isImageMsg ? "step-1o-turbo-vision" : "step-2-16k-exp";
+        var model = isImageMsg ? VisionModelName : ModelName;
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         var tools = GetToolParamters(input.WithFunctions, _functionRepository, out var funcPrompt);
         if (!string.IsNullOrEmpty(funcPrompt))

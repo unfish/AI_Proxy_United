@@ -44,6 +44,7 @@ public class ReadBookClient: IApiClient
         _serviceProvider = serviceProvider;
     }
     private int modelId = (int)M.Gemini小杯;
+    private bool useCache = false;
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
@@ -63,7 +64,7 @@ public class ReadBookClient: IApiClient
             {
                 var resp = await gemini.UploadMediaFile(q.Bytes, q.FileName);
                 var cacheResult = await gemini.CreateCachedContent("", resp.uri, resp.mimeType);
-                if (cacheResult.resultType == ResultType.Answer)
+                if (useCache && cacheResult.resultType == ResultType.Answer)
                 {
                     q.Content = cacheResult.ToString();
                     q.Type = ChatType.缓存ID;
@@ -73,6 +74,7 @@ public class ReadBookClient: IApiClient
                 {
                     q.Content = resp.uri;
                     q.Type = ChatType.文件Url;
+                    q.MimeType = resp.mimeType;
                     q.Bytes = null;
                 }
                 isFirstBookChat = true;
@@ -80,7 +82,7 @@ public class ReadBookClient: IApiClient
             {
                 var fileContent = await api.ReadFileTextContent(q.Bytes, q.FileName);
                 var cacheResult = await gemini.CreateCachedContent(fileContent, "", "");
-                if (cacheResult.resultType == ResultType.Answer)
+                if (useCache && cacheResult.resultType == ResultType.Answer)
                 {
                     q.Content = cacheResult.ToString();
                     q.Type = ChatType.缓存ID;
@@ -91,6 +93,7 @@ public class ReadBookClient: IApiClient
                     var resp = await gemini.UploadMediaFile(q.Bytes, q.FileName);
                     q.Content = resp.uri;
                     q.Type = ChatType.文件Url;
+                    q.MimeType = resp.mimeType;
                     q.Bytes = null;
                 }
                 isFirstBookChat = true;
@@ -106,6 +109,7 @@ public class ReadBookClient: IApiClient
                 } 
                 q.Content = resp.uri;
                 q.Type = ChatType.视频Url;
+                q.MimeType = resp.mimeType;
                 q.Bytes = null;
                 question = "请详细分析一下该视频文件内容，描述、分析并总结该视频内容。";
             }

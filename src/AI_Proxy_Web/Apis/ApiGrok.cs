@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Grok, "X.ai Grok2", "Grok 2是马斯克放下X.ai公司的大模型，支持图片理解和function call。", 37,  canProcessImage:true, canProcessMultiImages:true, canUseFunction:true, priceIn: 15, priceOut: 73)]
+[ApiClass(M.Grok, "X.ai Grok3", "Grok 3是马斯克放下X.ai公司的最新最强大模型，支持图片理解和function call。", 37,  canProcessImage:true, canProcessMultiImages:true, canUseFunction:true, priceIn: 15, priceOut: 73)]
 public class ApiGrok:ApiBase
 {
     protected GrokClient _client;
@@ -62,8 +62,8 @@ public class GrokClient:OpenAIClientBase, IApiClient
     
     private static String hostUrl;
     private String APIKEY;//从开放平台控制台中获取
-    private string modelName = "grok-2-1212";
-    private string visionModelName = "grok-2-vision-1212";
+    private string modelName = "grok-3-fast";
+    private string visionModelName = "grok-3-fast";
 
     public void SetModel(string name)
     {

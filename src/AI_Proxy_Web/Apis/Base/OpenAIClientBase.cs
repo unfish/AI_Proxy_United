@@ -400,6 +400,11 @@ public class OpenAIClientBase
                                 var reason = tk["reasoning_content"].Value<string>();
                                 yield return Result.Reasoning(reason);
                             }
+                            else if (tk["reasoning"] != null && !string.IsNullOrEmpty(tk["reasoning"].Value<string>())) //阶跃的思考过程返回参数
+                            {
+                                var reason = tk["reasoning"].Value<string>();
+                                yield return Result.Reasoning(reason);
+                            }
                         }
                     }
                 }

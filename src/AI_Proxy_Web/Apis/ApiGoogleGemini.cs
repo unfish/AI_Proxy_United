@@ -11,14 +11,14 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Gemini, "Gemini2 Pro", "强烈推荐：Gemini 2.5 Pro是Google推出的最新多模态大模型实验版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错，据说代码能力也不错。目前是免费的，但限流比较低。", 5, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canProcessAudio:true, canUseFunction:true, priceIn: 0, priceOut: 0)]
+[ApiClass(M.Gemini, "Gemini2.5 Pro", "强烈推荐：Gemini 2.5 Pro是Google推出的最新多模态大模型实验版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错，据说代码能力也不错。", 5, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canProcessAudio:true, canUseFunction:true, priceIn: 2, priceOut: 5)]
 public class ApiGoogleGemini:ApiBase
 {
     protected GoogleGeminiClient _client;
     public ApiGoogleGemini(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client = serviceProvider.GetRequiredService<GoogleGeminiClient>();
-        _client.SetModel("gemini-2.5-pro-exp-03-25");
+        _client.SetModel("gemini-2.5-pro-preview-03-25");
     }
     
     /// <summary>
@@ -47,16 +47,16 @@ public class ApiGoogleGemini:ApiBase
     
 }
 
-[ApiClass(M.Gemini小杯, "Gemini小杯", "Gemini 2.0 Flash是Google推出的Flash版多模态大模型正式版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错。目前是免费的，但限流比较低。", 6,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:false, priceIn: 0, priceOut: 0)]
+[ApiClass(M.Gemini小杯, "Gemini小杯", "Gemini 2.0 Flash是Google推出的Flash版多模态大模型正式版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错。", 6,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 1, priceOut: 2)]
 public class ApiGoogleGeminiFlash : ApiGoogleGemini
 {
     public ApiGoogleGeminiFlash(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _client.SetModel("gemini-1.5-flash-002");
+        _client.SetModel("gemini-2.0-flash");
     }
 }
 
-[ApiClass(M.GeminiThinking, "Gemini2 Thinking", "Gemini 2.0 Flash Thinking Exp实验版本，带思考推理能力的Gemini 2。", 116, ApiClassTypeEnum.推理模型, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:false, priceIn: 0, priceOut: 0)]
+[ApiClass(M.GeminiThinking, "Gemini2 Thinking", "Gemini 2.0 Flash Thinking Exp实验版本，带思考推理能力的Gemini 2。", 116, ApiClassTypeEnum.推理模型, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:false, priceIn: 1, priceOut: 2)]
 public class ApiGoogleGeminiThinking : ApiGoogleGemini
 {
     public ApiGoogleGeminiThinking(IServiceProvider serviceProvider) : base(serviceProvider)
@@ -65,7 +65,7 @@ public class ApiGoogleGeminiThinking : ApiGoogleGemini
     }
 }
 
-[ApiClass(M.GeminiExp, "Gemini2实验版", "Gemini 2 Flash Exp 实验版本，支持图文混排输出。", 7, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:false, priceIn: 0, priceOut: 0)]
+[ApiClass(M.GeminiExp, "Gemini2实验版", "Gemini 2 Flash Exp 实验版本，支持图文混排输出。", 7, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:false, priceIn: 1, priceOut: 2)]
 public class ApiGoogleGeminiExp : ApiGoogleGemini
 {
     public ApiGoogleGeminiExp(IServiceProvider serviceProvider) : base(serviceProvider)
@@ -100,7 +100,6 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
     private string fileUploadUrl;
     private string APIKEY;
     private string modelName = "";
-    private string cachedModelName = "gemini-1.5-flash-002"; //不是所有版本都支持缓存功能，使用缓存功能时需要特别处理
     public bool useSystem = true;
     public bool useFunctions = true;
     public bool canGenImage = false;
@@ -138,6 +137,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                             mime_type = mimeType, data = qc.Content
                         }
                     });
+                    useFunctions = false;
                 } 
                 else if (qc.Type == ChatType.文件Bytes)
                 {
@@ -152,6 +152,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                             }
                         });
                     }
+                    useFunctions = false;
                 }
                 else if (qc.Type == ChatType.图片Url || qc.Type== ChatType.语音Url || qc.Type== ChatType.视频Url || qc.Type== ChatType.文件Url)
                 {
@@ -162,6 +163,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                             mime_type = qc.MimeType, file_uri = qc.Content
                         }
                     });
+                    useFunctions = false;
                 }
                 else if (qc.Type == ChatType.文本 || qc.Type == ChatType.提示模板|| qc.Type== ChatType.图书全文)
                 {
@@ -175,16 +177,17 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                             }
                         });
                         contents.Add(new { text = "详细总结一下这条视频的内容。" });
+                        useFunctions = false;
                     }else
                        contents.Add(new { text = qc.Content });
                 }
                 else if (qc.Type == ChatType.缓存ID)
                 {
                     input.CachedContentId = qc.Content;
-                    SetModel(cachedModelName);
                 }
             }
-            msgs.Add(new Message() { role = role, parts = contents.ToArray() });
+            if(contents.Count > 0)
+                msgs.Add(new Message() { role = role, parts = contents.ToArray() });
 
             foreach (var ac in ctx.AC)
             {
@@ -253,11 +256,16 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
         }
 
         var functions = _functionRepository.GetFunctionList(input.WithFunctions);
-        object tools = new object[]
-        {
-           // new { codeExecution = new { } }, 
-           new { google_search = new { } }, new { function_declarations = functions }
-        };
+        object tools = functions == null || functions.Count == 0
+            ? new object[]
+            {
+                new { codeExecution = new { } },
+                new { google_search = new { } }
+            }
+            : new object[]
+            {
+                new { function_declarations = functions }
+            };
             
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         return JsonConvert.SerializeObject(new
@@ -297,6 +305,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 line = await reader.ReadToEndAsync();
+                //Console.WriteLine(line);
                 yield return Result.Error(line);
                 if (!string.IsNullOrEmpty(input.CachedContentId))
                 {
@@ -528,7 +537,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
             });
         var msg = JsonConvert.SerializeObject(new
         {
-            model="models/"+cachedModelName,
+            model="models/"+modelName,
             contents = new[]
             {
                 new

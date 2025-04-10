@@ -61,6 +61,7 @@ public enum M
     混元T1 = 125,
     QvQ_Max = 126,
     Baidu_X1 = 127,
+    阶跃R1Mini = 128,
     
     WebControl = 181,
     博查Web搜索 = 182,
