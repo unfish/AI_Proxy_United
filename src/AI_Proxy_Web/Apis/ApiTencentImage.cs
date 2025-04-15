@@ -57,3 +57,39 @@ public class ApiTencentImage:ApiBase
         _client.SetExtraOptions(ext_userId, type, value);
     }
 }
+
+
+[ApiClass(M.混元3D, "混元3D", "腾讯混元文生3D/图生3D 是腾讯推出的文本或图片生成3D模型，返回obj格式的3D文件。", 215, type: ApiClassTypeEnum.画图模型, priceIn: 0, priceOut: 0.4)]
+public class ApiTencent3D:ApiBase
+{
+    private TencentClient _client;
+    public ApiTencent3D(IServiceProvider serviceProvider):base(serviceProvider)
+    {
+        _client = serviceProvider.GetRequiredService<TencentClient>();
+    }
+    
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    protected override async IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input)
+    {
+        input.IgnoreAutoContexts = true;
+        await foreach (var resp in _client.TextTo3D(input))
+        {
+            yield return resp;
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    protected override async Task<Result> DoProcessQuery(ApiChatInputIntern input)
+    {
+        return Result.Error("画图接口不支持Query调用");
+    }
+
+}

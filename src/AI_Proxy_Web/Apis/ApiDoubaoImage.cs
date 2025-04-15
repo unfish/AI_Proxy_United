@@ -53,6 +53,16 @@ public class ApiDoubaoImage:ApiBase
     {
         return Result.Error("画图接口不支持Query调用");
     }
+        
+    public override List<ExtraOption>? GetExtraOptions(string ext_userId)
+    {
+        return _client.GetExtraOptions(ext_userId);
+    }
+
+    public override void SetExtraOptions(string ext_userId, string type, string value)
+    {
+        _client.SetExtraOptions(ext_userId, type, value);
+    }
 }
 
 
@@ -205,6 +215,33 @@ public class DoubaoImageClient: IApiClient
 
     #endregion
     
+    public List<ExtraOption> GetExtraOptions(string ext_userId)
+    {
+        var list = new List<ExtraOption>()
+        {
+            new ExtraOption()
+            {
+                Type = "尺寸", Contents = new []
+                {
+                    new KeyValuePair<string, string>("方形", "1536:1536"),
+                    new KeyValuePair<string, string>("横屏", "1584:1056"),
+                    new KeyValuePair<string, string>("竖屏", "1056:1584")
+                }
+            }
+        };
+        foreach (var option in list)
+        {
+            var cacheKey = $"{ext_userId}_{this.GetType().Name}_{option.Type}";
+            var v = CacheService.Get<string>(cacheKey);
+            option.CurrentValue = string.IsNullOrEmpty(v) ? option.Contents.First().Value : v;
+        }
+        return list;
+    }
+    public void SetExtraOptions(string ext_userId, string type, string value)
+    {
+        var cacheKey = $"{ext_userId}_{this.GetType().Name}_{type}";
+        CacheService.Save(cacheKey, value, DateTime.Now.AddDays(30));
+    }
     /// <summary>
     /// 要增加上下文功能通过input里面的history数组变量，数组中每条记录是user和bot的问答对
     /// </summary>
@@ -212,12 +249,13 @@ public class DoubaoImageClient: IApiClient
     /// <returns></returns>
     public string GetMsgBody(ApiChatInputIntern input)
     {
+        var op = GetExtraOptions(input.External_UserId)[0].CurrentValue.Split(":");
         return JsonConvert.SerializeObject(new
         {
-            req_key = "high_aes_general_v21_L",
+            req_key = "high_aes_general_v30l_zt2i",
             prompt = input.ChatContexts.Contexts.Last().QC.Last().Content,
-            width = 768,
-            height = 768,
+            width = int.Parse(op[0]),
+            height = int.Parse(op[1]),
             use_pre_llm = true
         });
     }

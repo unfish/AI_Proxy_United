@@ -126,7 +126,7 @@ public class TencentClient:OpenAIClientBase, IApiClient
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
         bool isImageMsg = IsImageMsg(input.ChatContexts);
-        var model = isImageMsg ? "hunyuan-vision" : modelName;
+        var model = isImageMsg ? "hunyuan-turbos-vision" : modelName;
         var tools = GetToolParamters(input.WithFunctions, _functionRepository, out var funcPrompt);
         if (!string.IsNullOrEmpty(funcPrompt))
             input.ChatContexts.AddQuestion(funcPrompt, ChatType.System);
@@ -284,6 +284,75 @@ public class TencentClient:OpenAIClientBase, IApiClient
                     break;
                 }
                 Thread.Sleep(1000);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 文生3D
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    public async IAsyncEnumerable<Result> TextTo3D(ApiChatInputIntern input)
+    {
+        Credential cred = new Credential {
+            SecretId = SecretId,
+            SecretKey = SecretKey
+        };
+        HunyuanClient _client = new HunyuanClient(cred, "ap-guangzhou");
+        SubmitHunyuanTo3DJobRequest req;
+        var qc = input.ChatContexts.Contexts.Last().QC;
+        if(qc.Any(t=>t.Type== ChatType.文本))
+            req = new SubmitHunyuanTo3DJobRequest()
+            {
+                Prompt = qc.Last(t=>t.Type== ChatType.文本).Content,
+            };
+        else if (qc.Any(t => t.Type == ChatType.图片Base64))
+            req = new SubmitHunyuanTo3DJobRequest()
+            {
+                ImageBase64 = qc.Last(t => t.Type == ChatType.图片Base64).Content,
+            };
+        else
+        {
+            yield return Result.Error("参数至少需要一个文本提示或一张图片");
+            yield break;
+        }
+        var resp = await _client.SubmitHunyuanTo3DJob(req);
+        if (!string.IsNullOrEmpty(resp.JobId))
+        {
+            int times = 0;
+            while (times<120)
+            {
+                times++;
+                yield return Result.Waiting(times.ToString());
+                var jobRes =
+                    await _client.QueryHunyuanTo3DJob(new QueryHunyuanTo3DJobRequest() { JobId = resp.JobId });
+                if (jobRes.Status == "DONE") //1：等待中、2：运行中、4：处理失败、5：处理完成。
+                {
+                    if (jobRes.ResultFile3Ds?.Length > 0)
+                    {
+                        foreach (var file3D in jobRes.ResultFile3Ds)
+                        {
+                            foreach (var file in file3D.File3D)
+                            {
+                                var url = file.Url;
+                                var type = file.Type;
+                                Console.WriteLine(url);
+                                var http = _httpClientFactory.CreateClient();
+                                var bytes = await http.GetByteArrayAsync(url);
+                                yield return FileResult.Answer(bytes, type == "GIF" ? "gif" : "zip",
+                                    type == "GIF" ? ResultType.ImageBytes : ResultType.FileBytes,
+                                    url.Substring(url.LastIndexOf("/") + 1));
+                            }
+                        }
+                    }
+                    break;
+                }else if (jobRes.Status == "FAIL")
+                {
+                    yield return Result.Error(jobRes.ErrorMessage);
+                    break;
+                }
+                Thread.Sleep(2000);
             }
         }
     }

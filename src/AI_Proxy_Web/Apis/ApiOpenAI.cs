@@ -10,7 +10,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.GPT4o_Mini, "GPT4o Mini", "GPT 4o mini, 回复速度快，接口更便宜也更稳定，16K上下文长度，逻辑推理能力和知识库弱于 GPT 4o，但回答写作类和创意类能力跟 GPT 4o 差不太多。", 0, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 1.08, priceOut: 4.32)]
+[ApiClass(M.GPT4o_Mini, "GPT4.1 Mini", "GPT 4.1 mini, 回复速度快，接口更便宜也更稳定，100W上下文长度，能力强于GPT 4o，速度和价格更有优势。", 0, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 1.08, priceOut: 4.32)]
 public class ApiOpenAIBase:ApiBase
 {
     protected IServiceProvider _serviceProvider;
@@ -28,8 +28,8 @@ public class ApiOpenAIBase:ApiBase
         chatUrl = hostUrl + "v1/chat/completions";
         //chatUrl = hostUrl + "v1/responses";
         apiKey = configHelper.GetConfig<string>("Service:OpenAI:Key");
-        modelName = "gpt-4o-mini";
-        visionModelName = "gpt-4o-mini";
+        modelName = "gpt-4.1-mini";
+        visionModelName = "gpt-4.1-mini";
     }
     
     protected override async IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input)
@@ -78,34 +78,13 @@ public class ApiOpenAIBase:ApiBase
     }
 }
 
-[ApiClass(M.GPT4o, "GPT 4o", "GPT 4o 是OpenAI最新的多模态模型，达到GPT4的能力，同时速度快一倍，价格便宜一半。", 1, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 18, priceOut: 72)]
+[ApiClass(M.GPT4o, "GPT 4.1", "GPT 4.1 是OpenAI最新的多模态模型，超过GPT4o，同时速度快一倍，价格便宜一半。", 1, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 15, priceOut: 60)]
 public class ApiOpenAI4o : ApiOpenAIBase
 {
     public ApiOpenAI4o(ConfigHelper configuration, IServiceProvider serviceProvider) : base(configuration, serviceProvider)
     {
-        modelName = "gpt-4o-2024-11-20";
-        visionModelName = "gpt-4o-2024-11-20";
-    }
-}
-
-[ApiClass(M.GPT4oLatest, "GPT 4o Latest", "GPT 4o Latest 是OpenAI最新的多模态模型，跟它的网页版同一个版本，新升级了资料库和聊天能力，但不支持function call。", 50, canUseFunction:false, canProcessImage:true, canProcessMultiImages:true, priceIn: 18, priceOut: 72)]
-public class ApiGPT4OLatest : ApiOpenAIBase
-{
-    public ApiGPT4OLatest(ConfigHelper configuration, IServiceProvider serviceProvider) : base(configuration, serviceProvider)
-    {
-        modelName = "chatgpt-4o-latest";
-        visionModelName = "chatgpt-4o-latest";
-    }
-}
-
-
-[ApiClass(M.GPT4_5, "GPT 4.5", "GPT 4.5 是OpenAI最新的多模态模型，参数量最大，价格最高，最人性化的模型。价格太贵了。", 52, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 550, priceOut: 1100)]
-public class ApiGPT4_5 : ApiOpenAIBase
-{
-    public ApiGPT4_5(ConfigHelper configuration, IServiceProvider serviceProvider) : base(configuration, serviceProvider)
-    {
-        modelName = "gpt-4.5-preview";
-        visionModelName = "gpt-4.5-preview";
+        modelName = "gpt-4.1";
+        visionModelName = "gpt-4.1";
     }
 }
 
@@ -114,8 +93,8 @@ public class ApiGPT4OSearch : ApiOpenAIBase
 {
     public ApiGPT4OSearch(ConfigHelper configuration, IServiceProvider serviceProvider) : base(configuration, serviceProvider)
     {
-        modelName = "gpt-4o";
-        visionModelName = "gpt-4o";
+        modelName = "gpt-4o-search-preview";
+        visionModelName = "gpt-4o-search-preview";
         extraTools = "web_search_preview";
     }
 }

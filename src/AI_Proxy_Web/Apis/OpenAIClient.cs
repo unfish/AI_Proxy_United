@@ -107,7 +107,7 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
             messages = msgs,
             tools,
             temperature = input.Temprature,
-            max_tokens = 4096,
+            max_tokens = 16000,
             user = input.External_UserId,
             stream
         }, jSetting);
@@ -296,7 +296,7 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
                 tools,
                 store = false,
                 temperature = input.Temprature,
-                max_output_tokens = 8192,
+                max_output_tokens = 16000,
                 user = input.External_UserId,
                 stream
             }, jSetting);
@@ -354,7 +354,7 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
         client.DefaultRequestHeaders.Add("Authorization","Bearer "+APIKEY);
         client.Timeout = TimeSpan.FromSeconds(300);
         var url = hostUrl + "v1/audio/transcriptions";
-        var defaultPrompt = "日常问题生活用语";
+        var defaultPrompt = "日常问题，可能涉及工业品专用品牌或术语，[火也]是一个专有品牌名词。";
         var content = new MultipartFormDataContent
         {
             { new StringContent("whisper-1"), "model" }, //固定值

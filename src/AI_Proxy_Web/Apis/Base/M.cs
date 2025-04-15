@@ -25,8 +25,8 @@ public enum M
     阶跃星辰 = 21,
     Llama3_70B = 22,
     MiniMax = 23,
-    GPT4oLatest = 24,
-    GPT4_5 = 25,
+    //GPT4oLatest = 24,
+    //GPT4_5 = 25,
     Gemini小杯 = 27,
     //GeminiThinking = 28,
     豆包Tools = 29,
@@ -42,7 +42,7 @@ public enum M
     
     DeerApi_GPT4oMini = 100,
     DeerApi_GPT4o = 101,
-    DeerApi_GPT45 = 102,
+    //DeerApi_GPT45 = 102,
     //GPT4备用 = 103,
     //Claude备用 = 104,
     GPT_o1 = 112,
@@ -98,6 +98,7 @@ public enum M
     豆包画图 = 212,
     文心iRAG = 213,
     MiniMax画图 = 214,
+    混元3D = 215,
     
     智谱视频 = 220,
     MiniMax视频 = 221,
