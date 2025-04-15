@@ -270,7 +270,7 @@ public class DoubaoImageClient: IApiClient
     {
         DateTime dateTimeSign = DateTime.UtcNow;
         NowDate = dateTimeSign.ToString("yyyyMMdd");
-        NowTime = dateTimeSign.ToString("hhmmss");
+        NowTime = dateTimeSign.ToString("HHmmss");
         dateTimeSignStr = NowDate + "T" + NowTime + "Z";
 
         var msg = GetMsgBody(input);
@@ -297,26 +297,37 @@ public class DoubaoImageClient: IApiClient
             reqStream.Write(byteArray, 0, byteArray.Length);
         }
 
-        using (HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse())
+        string respondStr;
+        bool isError = false;
+        try
         {
-            using (StreamReader sr = new StreamReader(webResponse.GetResponseStream(), Encoding.UTF8))
+            using HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse();
+            using StreamReader sr = new StreamReader(webResponse.GetResponseStream(), Encoding.UTF8);
+            respondStr = sr.ReadToEnd();
+        }
+        catch (Exception ex)
+        {
+            respondStr = ex.Message;
+            isError = true;
+        }
+
+        if (isError)
+        {
+            yield return Result.Error(respondStr);
+        }
+        else
+        {
+            var o = JObject.Parse(respondStr);
+            if (o["status"].Value<int>() == 10000)
             {
-                var respondStr = sr.ReadToEnd();
-                if (webResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    yield return Result.Error(respondStr);
-                }
-                else
-                {
-                    var o = JObject.Parse(respondStr);
-                    if (o["status"].Value<int>() == 10000)
-                    {
-                        var pe = o["data"]["pe_result"].Value<string>();
-                        yield return Result.Answer(pe);
-                        var b64 = o["data"]["binary_data_base64"][0].Value<string>();
-                        yield return FileResult.Answer(Convert.FromBase64String(b64), "png", ResultType.ImageBytes);
-                    }
-                }
+                var pe = o["data"]["pe_result"].Value<string>();
+                yield return Result.Answer(pe);
+                var b64 = o["data"]["binary_data_base64"][0].Value<string>();
+                yield return FileResult.Answer(Convert.FromBase64String(b64), "png", ResultType.ImageBytes);
+            }
+            else
+            {
+                yield return Result.Error(respondStr);
             }
         }
     }
