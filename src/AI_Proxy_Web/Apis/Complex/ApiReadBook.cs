@@ -44,7 +44,7 @@ public class ReadBookClient: IApiClient
         _serviceProvider = serviceProvider;
     }
     private int modelId = (int)M.Gemini小杯;
-    private bool useCache = false;
+    private bool useCache = true;
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
@@ -56,7 +56,7 @@ public class ReadBookClient: IApiClient
         if (q != null) //首次进入处理文件上传
         {
             var question = "该文件是一本书的完整内容，请按其中的章节顺序，总结出每个章节的核心内容，忽略序言后序等内容。" +
-                           "\n您的响应必须是包含 3 个元素的 JSON 对象。对象具有以下架构：\n" +
+                           "\n请以JSON格式返回章节内容，您的响应必须是包含 3 个元素的 JSON 对象，对象具有以下架构：\n" +
                            "part: 第几部分，及该部分的标题，如果没有可以忽略该字段。\nchapter: 第几章，及该章的标题。\nsummary:该章的关键内容总结，总结应该尽量简短，控制在50个字以内。\n" +
                            "返回示例：[\n    {\"part\":\"第1部分：XXX\",\"chapter\":\"第1章：XXX\",\"summary\":\"XXX\"}\n]";
             var fileName = q.FileName.ToLower();
@@ -145,7 +145,6 @@ public class ReadBookClient: IApiClient
                     summary = summary.Substring(0, jsonIndex);
             }
 
-            bool stopSign = false;
             JArray arr = null;
             try
             {
@@ -163,14 +162,14 @@ public class ReadBookClient: IApiClient
 
             foreach (var tk in arr)
             {
-                if (ApiBase.CheckStopSigns(input))
+                if (ApiBase.CheckStopSigns(input, false))
                 {
                     yield return Result.Answer("收到停止指令，停止自动总结。");
                     break;
                 }
 
                 input.ChatContexts.AddQuestion(
-                    $"[Q]现在请详细的总结{tk["chapter"].Value<string>()}的内容，需要尽量完整的包含该章原文中作者表达的主要观点、结论，以及得出这些结论的论据、证据、数字，和主要推理过程，必要时输出原文内容，输出原文时不超过5段。\n注意：列表项内容使用数字序号或-横线开头，不要使用*星号。");
+                    $"[Q]现在请详细的总结{tk["chapter"].Value<string>()}的内容，需要尽量完整的包含该章原文中作者表达的主要观点、结论，以及得出这些结论的论据、证据、数字，和主要推理过程，必要时输出原文内容，输出原文时不超过5段。\n以普通Markdown文本格式返回内容，列表项内容使用数字序号或-横线开头，不要使用*星号格式。");
 
                 await foreach (var res in api.ProcessChat(input))
                 {

@@ -45,7 +45,6 @@ public abstract class ApiBase
         if (input.RecursionLevel == 0)
         {
             RunningSignsDictionary.TryRemove($"{input.External_UserId}_{input.ContextCachePrefix}_Running", out _);
-            RemoveStopSigns(input);
         }
     }
     private static void SetStopSigns(ApiChatInputIntern input)
@@ -53,14 +52,18 @@ public abstract class ApiBase
         StopSignsDictionary.AddOrUpdate($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping", true,
             (s, b) => true);
     }
-    public static bool CheckStopSigns(ApiChatInputIntern input)
+    public static bool CheckStopSigns(ApiChatInputIntern input, bool removeStopSigns = true)
     {
-        return StopSignsDictionary.ContainsKey($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping");
+        var res = StopSignsDictionary.ContainsKey($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping");
+        if(removeStopSigns)
+            RemoveStopSigns(input);
+        return res;
     }
     private static void RemoveStopSigns(ApiChatInputIntern input)
     {
         StopSignsDictionary.TryRemove($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping", out _);
     }
+
     
     #endregion
 
