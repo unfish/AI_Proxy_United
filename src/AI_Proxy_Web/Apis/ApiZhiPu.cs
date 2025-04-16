@@ -10,7 +10,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.智谱清言, "智谱清言", "智谱清言GLM-4v，来自清华，中文开源大模型中最强，支持图文，支持function call。", 20,  canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 50, priceOut: 50)]
+[ApiClass(M.智谱清言, "智谱清言", "智谱清言GLM-4-Air，来自清华，中文开源大模型中最强，支持图文，支持function call。", 20,  canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 5, priceOut: 5)]
 public class ApiZhiPu:ApiBase
 {
     protected ZhiPuClient _client;
@@ -65,13 +65,13 @@ public class ApiZhiPuFlash : ApiZhiPu
     }
 }
 
-[ApiClass(M.智谱Zero, "智谱Zero", "智谱清言Zero-preview，类o1思考模型。", 115, ApiClassTypeEnum.推理模型, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 50, priceOut: 50)]
+[ApiClass(M.智谱Zero, "智谱Z1", "智谱清言Z1 AirX，类o1思考模型，速度极快。", 115, ApiClassTypeEnum.推理模型, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 5, priceOut: 5)]
 public class ApiZhiPuZero : ApiZhiPu
 {
     public ApiZhiPuZero(IServiceProvider serviceProvider):base(serviceProvider)
     {
-        _client.SetModel("glm-zero-preview");
-        _client.SetImageModel("glm-zero-preview");
+        _client.SetModel("glm-z1-airx");
+        _client.SetImageModel("glm-z1-airx");
     }
 }
 
@@ -204,8 +204,8 @@ public class ZhiPuClient: OpenAIClientBase, IApiClient
 
     private String AppId;//从开放平台控制台中获取
     private String AppSecret;//从开放平台控制台中获取
-    private string modelName = "glm-4-plus";
-    private string imageModelName = "glm-4v-plus";
+    private string modelName = "glm-4-air-250414";
+    private string imageModelName = "glm-4v-plus-0111";
 
     public void SetModel(string name)
     {

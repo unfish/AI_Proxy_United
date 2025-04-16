@@ -70,7 +70,7 @@ public class ApiWenXinX1 : ApiWenXin
 {
     public ApiWenXinX1(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _client.SetModel("ernie-x1-32k-preview");
+        _client.SetModel("ernie-x1-32k");
         _client.MaxTokens = 8192;
     }
 }
