@@ -10,7 +10,7 @@ using Newtonsoft.Json.Linq;
 namespace AI_Proxy_Web.Apis;
 
 
-[ApiClass(M.百度文心, "文心4.5", "百度文心一言4.5，对话能力提升，支持图片，但不支持function call。", 13, canUseFunction:false, canProcessImage:true, canProcessMultiImages:true, priceIn: 4, priceOut: 16)]
+[ApiClass(M.百度文心, "文心4.5", "百度文心一言4.5 Turbo，对话能力提升，支持图片，支持function call。", 13, canUseFunction:true, canProcessImage:true, canProcessMultiImages:true, priceIn: 4, priceOut: 16)]
 public class ApiWenXin:ApiBase
 {
     protected WenXinClient _client;
@@ -65,12 +65,13 @@ public class ApiWenXinDeepSeekR1 : ApiWenXin
     }
 }
 
-[ApiClass(M.Baidu_X1, "文心X1", "文心一言X1推理版。", 127, type: ApiClassTypeEnum.推理模型, priceIn: 4, priceOut: 16)]
+[ApiClass(M.Baidu_X1, "文心X1", "文心一言X1 Turbo多模态推理模型。", 127, type: ApiClassTypeEnum.推理模型, canUseFunction:false, canProcessImage:true, canProcessMultiImages:true, priceIn: 4, priceOut: 16)]
 public class ApiWenXinX1 : ApiWenXin
 {
     public ApiWenXinX1(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _client.SetModel("ernie-x1-32k");
+        _client.SetModel("ernie-x1-turbo-32k");
+        _client.SetVisionModel("ernie-x1-turbo-32k");
         _client.MaxTokens = 8192;
     }
 }
@@ -108,13 +109,17 @@ public class WenXinClient:OpenAIClientBase, IApiClient
     private string BearTokenCacheKey = "BaiduV1_BearToken";
 
     private string AccessTokenCacheKey;
-    public static DateTime NextRefreshTime = DateTime.Now;
-    private string modelName = "ernie-4.5-8k-preview";
-    public int MaxTokens = 2048;
+    private string modelName = "ernie-4.5-turbo-32k";
+    private string visionModelName = "ernie-4.5-turbo-vl-32k";
+    public int MaxTokens = 8192;
 
     public void SetModel(string name)
     {
         this.modelName = name;
+    }
+    public void SetVisionModel(string visionModel)
+    {
+        visionModelName = visionModel;
     }
     
     private async Task<string> GetAccessToken(HttpClient client)
@@ -172,6 +177,8 @@ public class WenXinClient:OpenAIClientBase, IApiClient
     /// <returns></returns>
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
+        bool isImageMsg = IsImageMsg(input.ChatContexts);
+        var model = isImageMsg ? visionModelName : modelName;
         var tools = GetToolParamters(input.WithFunctions, _functionRepository, out var funcPrompt);
         if (!string.IsNullOrEmpty(funcPrompt))
             input.ChatContexts.AddQuestion(funcPrompt, ChatType.System);
@@ -179,7 +186,7 @@ public class WenXinClient:OpenAIClientBase, IApiClient
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         return JsonConvert.SerializeObject(new
         {
-            model = modelName,
+            model = model,
             messages = msgs,
             temperature = input.Temprature,
             stream,

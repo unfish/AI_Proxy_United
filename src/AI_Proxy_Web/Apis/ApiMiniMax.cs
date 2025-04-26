@@ -260,7 +260,7 @@ public class MiniMaxClient: OpenAIClientBase, IApiClient
         var _client = _httpClientFactory.CreateClient();
         _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {APIKEY}");
         var prompt = input.ChatContexts.Contexts.Last().QC.Last(t => t.Type == ChatType.文本).Content;
-        var img = input.ChatContexts.Contexts.Last().QC.Last(t => t.Type == ChatType.图片Base64)?.Content;
+        var img = input.ChatContexts.Contexts.Last().QC.LastOrDefault(t => t.Type == ChatType.图片Base64)?.Content;
         var imgRef = img == null
             ? null
             : new

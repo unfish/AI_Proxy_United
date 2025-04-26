@@ -47,12 +47,12 @@ public class ApiGoogleGemini:ApiBase
     
 }
 
-[ApiClass(M.Gemini小杯, "Gemini小杯", "Gemini 2.0 Flash是Google推出的Flash版多模态大模型正式版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错。", 6,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 1, priceOut: 2)]
+[ApiClass(M.Gemini小杯, "Gemini2.5 Flash", "Gemini 2.5 Flash是Google推出的Flash版多模态大模型正式版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错。", 6,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 1, priceOut: 2)]
 public class ApiGoogleGeminiFlash : ApiGoogleGemini
 {
     public ApiGoogleGeminiFlash(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _client.SetModel("gemini-2.0-flash");
+        _client.SetModel("gemini-2.5-flash-preview-04-17");
     }
 }
 
@@ -259,7 +259,6 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
         object tools = functions == null || functions.Count == 0
             ? new object[]
             {
-                new { codeExecution = new { } },
                 new { google_search = new { } }
             }
             : new object[]
@@ -307,16 +306,13 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                 line = await reader.ReadToEndAsync();
                 //Console.WriteLine(line);
                 yield return Result.Error(line);
-                if (!string.IsNullOrEmpty(input.CachedContentId))
-                {
-                    await DeleteCachedContent(input.CachedContentId);
-                }
                 yield break;
             }
 
             List<FunctionCall> functionCalls = new List<FunctionCall>();
             List<Result> results = new List<Result>();
             var sb = new StringBuilder();
+            var hasImage = false;
             while ((line = await reader.ReadLineAsync()) != null)
             {
                 //Console.WriteLine(line);
@@ -372,6 +368,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                                     var fr = FileResult.Answer(Convert.FromBase64String(tk["inlineData"]["data"].Value<string>()), "png", ResultType.ImageBytes);
                                     yield return fr;
                                     results.Add(fr);
+                                    hasImage = true;
                                 }
                             }
                         }
@@ -388,7 +385,7 @@ public class GoogleGeminiClient:OpenAIClientBase, IApiClient
                 results.Add(Result.Answer(sb.ToString()));
             }
 
-            if (results.Count > 1)
+            if (hasImage || results.Count > 1)
             {
                 yield return MultiMediaResult.Answer(results);
             }

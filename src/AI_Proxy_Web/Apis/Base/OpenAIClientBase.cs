@@ -400,7 +400,7 @@ public class OpenAIClientBase
                                 var reason = tk["reasoning_content"].Value<string>();
                                 yield return Result.Reasoning(reason);
                             }
-                            else if (tk["reasoning"] != null && !string.IsNullOrEmpty(tk["reasoning"].Value<string>())) //阶跃的思考过程返回参数
+                            else if (tk["reasoning"] != null && !string.IsNullOrEmpty(tk["reasoning"].Value<string>()))
                             {
                                 var reason = tk["reasoning"].Value<string>();
                                 yield return Result.Reasoning(reason);
@@ -579,6 +579,9 @@ public class OpenAIClientBase
     {
         var content = await resp.Content.ReadAsStringAsync();
         var res = JObject.Parse(content);
+        if (res["error"] is not null)
+            return Result.Error(content);
+        
         List<FunctionCall> functionCalls = new List<FunctionCall>();
         var status = res["status"].Value<string>();
         var format = res["text"]["format"]["type"].Value<string>(); //text或json_schema

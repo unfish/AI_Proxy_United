@@ -44,7 +44,7 @@ public class ReadBookClient: IApiClient
         _serviceProvider = serviceProvider;
     }
     private int modelId = (int)M.Gemini小杯;
-    private bool useCache = true;
+    private bool useCache = false;
     
     public async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
@@ -145,18 +145,20 @@ public class ReadBookClient: IApiClient
                     summary = summary.Substring(0, jsonIndex);
             }
 
-            JArray arr = null;
+            JArray? arr = null;
             try
             {
                 arr = JArray.Parse(summary);
             }
             catch
             {
+                // ignored
             }
 
             if (arr == null)
             {
                 yield return Result.Error("JSON解析错误。");
+                input.IgnoreAutoContexts = true;
                 yield break;
             }
 
@@ -174,6 +176,11 @@ public class ReadBookClient: IApiClient
                 await foreach (var res in api.ProcessChat(input))
                 {
                     yield return res;
+                    if (res.resultType == ResultType.Error)
+                    {
+                        input.IgnoreAutoContexts = true;
+                        yield break;
+                    }
                 }
             }
 

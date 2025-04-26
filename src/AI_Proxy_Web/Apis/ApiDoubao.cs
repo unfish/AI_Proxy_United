@@ -76,13 +76,32 @@ public class ApiDoubaoDeepSeekR1 : ApiDoubao
     }
 }
 
+[ApiClass(M.Doubao_DeepSeekV3, "DS V3火山版", "DeepSeek V3火山引擎备用接口，自带搜索引擎可以联网搜索后回答。", 38, type: ApiClassTypeEnum.问答模型, priceIn: 2, priceOut: 8)]
+public class ApiDoubaoDeepSeekV3 : ApiDoubao
+{
+    public ApiDoubaoDeepSeekV3(IServiceProvider serviceProvider, ConfigHelper configHelper):base(serviceProvider, configHelper)
+    {
+        _client.SetModel(configHelper.GetConfig<string>("Service:Doubao:V3ModelId"));
+    }
+}
+
+[ApiClass(M.Doubao_Thinking, "豆包Thinking", "豆包Thinking Pro推理模型，支持图片推理。", 129, type: ApiClassTypeEnum.推理模型, canProcessImage:true, priceIn: 4, priceOut: 16)]
+public class ApiDoubaoThinking : ApiDoubao
+{
+    public ApiDoubaoThinking(IServiceProvider serviceProvider, ConfigHelper configHelper):base(serviceProvider, configHelper)
+    {
+        _client.SetModel(configHelper.GetConfig<string>("Service:Doubao:ThinkingModelId"));
+        _client.SetVisionModel(configHelper.GetConfig<string>("Service:Doubao:ThinkingVisionModelId"));
+        _client.MaxTokens = 16000;
+    }
+}
 
 [ApiClass(M.豆包Seaweed, "豆包Seaweed", "豆包Seaweed 是字节推出的文本生成视频模型，选定视频的尺寸之后直接输入要画的场景描述，中英文都可以，可以上传一张图片作为首帧。", 224, type: ApiClassTypeEnum.视频模型, priceIn: 0, priceOut: 2)]
 public class ApiDpubapSeaweed:ApiDoubao
 {
     public ApiDpubapSeaweed(IServiceProvider serviceProvider, ConfigHelper configHelper):base(serviceProvider, configHelper)
     {
-        _client.SetVidelModel(configHelper.GetConfig<string>("Service:Doubao:SeaweedModelId"));
+        _client.SetVideoModel(configHelper.GetConfig<string>("Service:Doubao:SeaweedModelId"));
     }
     
     protected override async IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input)
@@ -149,10 +168,12 @@ public class DoubaoClient:OpenAIClientBase, IApiClient
         visionModelName = name;
     }
 
-    public void SetVidelModel(string name)
+    public void SetVideoModel(string name)
     {
         videoModelName = name;
     }
+
+    public int MaxTokens = 8192;
     
     /// <summary>
     /// 要增加上下文功能通过input里面的history数组变量，数组中每条记录是user和bot的问答对
@@ -176,7 +197,7 @@ public class DoubaoClient:OpenAIClientBase, IApiClient
             temperature = input.Temprature,
             tools = tools,
             stream,
-            max_tokens = 8192,
+            max_tokens = MaxTokens,
             user = input.External_UserId
         }, jSetting);
     }

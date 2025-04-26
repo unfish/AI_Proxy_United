@@ -9,7 +9,7 @@ using SkiaSharp;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.DeepData计数, "DeepData计数", "DeepDataSpace T-Rex交互式目标检测和计数系统，上传一张目标图片和一张参考图片，并指定参考图片中要数数的目标的位置或方框坐标，自动在目标图片中找出所有的目标图片。", 320, type: ApiClassTypeEnum.辅助模型,  priceIn:0, priceOut: 3)]
+[ApiClass(M.DeepData计数, "DeepData计数", "DeepDataSpace T-Rex2交互式目标检测和计数系统，上传一张目标图片和一张参考图片，并指定参考图片中要数数的目标的位置或方框坐标，自动在目标图片中找出所有的目标图片。", 320, type: ApiClassTypeEnum.辅助模型,  priceIn:0, priceOut: 3)]
 public class ApiDeepDataSpace:ApiBase
 {
     private DeepDataSpaceClient _client;
@@ -28,11 +28,17 @@ public class ApiDeepDataSpace:ApiBase
     {
         return Result.Error("该接口不支持Query调用");
     }
+
+    protected override void InitSpecialInputParam(ApiChatInputIntern input)
+    {
+        input.IgnoreAutoContexts = true;
+        input.IgnoreSaveLogs = true;
+    }
 }
 
 /// <summary>
 /// deepdataspace API接口
-/// 文档地址 https://cloud.deepdataspace.com/docs#/api/trex_generic_infer
+/// 文档地址 https://cloud.deepdataspace.com/docs
 /// </summary>
 public class DeepDataSpaceClient: IApiClient
 {
@@ -42,9 +48,12 @@ public class DeepDataSpaceClient: IApiClient
         _httpClientFactory = httpClientFactory;
         
         APIKEY = configHelper.GetConfig<string>("Service:DeepDataSpace:Key");
-        hostUrl = configHelper.GetConfig<string>("Service:DeepDataSpace:Host");
+        var host = configHelper.GetConfig<string>("Service:DeepDataSpace:Host");
+        createTaskUrl = host + "v2/task/trex/detection";
+        checkTaskUrl = host + "v2/task_status/";
     }
-    private String hostUrl;
+    private String createTaskUrl;
+    private String checkTaskUrl;
     private String APIKEY;
     
     /// <summary>
@@ -55,7 +64,7 @@ public class DeepDataSpaceClient: IApiClient
     public async IAsyncEnumerable<Result> SendMessage(ApiChatInputIntern input)
     {
         var ctx = input.ChatContexts.Contexts.Last();
-        var url = hostUrl;
+        var url = createTaskUrl;
         HttpClient client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Add("Token", APIKEY);
         var image1 = ctx.QC.FirstOrDefault(t => t.Type == ChatType.图片Base64)?.Content;
@@ -64,17 +73,20 @@ public class DeepDataSpaceClient: IApiClient
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         var msg = JsonConvert.SerializeObject(new
         {
-            batch_infers = new[]
+            model="T-Rex-2.0",
+            image= "data:image/jpeg;base64," + image1,
+            targets = new[]{"bbox"},
+            prompt = new
             {
-                new
+                type="visual_images",
+                visual_images = new[]
                 {
-                    image = "data:image/jpeg;base64," + image1,
-                    prompt_type = "point",
-                    prompts = new[]
+                    new
                     {
-                        new
+                        image = "data:image/jpeg;base64," + image1,
+                        interactions = new[]
                         {
-                            category_id = 1, points =new[]{arr}
+                            new{type="rect", rect = arr}
                         }
                     }
                 }
@@ -90,24 +102,35 @@ public class DeepDataSpaceClient: IApiClient
         {
             var id = json["data"]["task_uuid"].Value<string>();
             int times = 0;
-            while (true)
+            while (times<60)
             {
-                url = "https://api.deepdataspace.com/task_statuses/" + id;
+                url = checkTaskUrl + id;
                 resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, url));
                 content = await resp.Content.ReadAsStringAsync();
                 json = JObject.Parse(content);
                 var state = json["data"]["status"].Value<string>();
                 if (state == "success")
                 {
-                    var results = json["data"]["result"]["object_batches"][0] as JArray;
-                    yield return Result.Answer($"共检测到 {results.Count} 个目标对象");
+                    var results = json["data"]["result"]["objects"] as JArray;
+                    var answer = $"共检测到 {results.Count} 个目标";
                     var bboxes = new List<SKRect>();
+                    var sboxes = new List<SKRect>();
                     foreach (var result in results)
                     {
                         var box = (result["bbox"] as JArray).ToObject<float[]>();
-                        bboxes.Add(new SKRect(box[0], box[1], box[2], box[3]));
+                        var score = result["score"].Value<double>();
+                        if (score <= 0.35)
+                            sboxes.Add(new SKRect(box[0], box[1], box[2], box[3]));
+                        else
+                            bboxes.Add(new SKRect(box[0], box[1], box[2], box[3]));
                     }
-                    var bytes = DrawBoundingBox(Convert.FromBase64String(image1), bboxes.ToArray(), SKColors.Red, 1);
+
+                    if (sboxes.Count > 0)
+                    {
+                        answer += $"，其中 {sboxes.Count} 个比较可疑";
+                    }
+                    yield return Result.Answer(answer + "。");
+                    var bytes = DrawBoundingBox(Convert.FromBase64String(image1), bboxes.ToArray(), SKColors.Green, sboxes.ToArray(), SKColors.Red, 1);
                     yield return FileResult.Answer(bytes, "png", ResultType.ImageBytes);
                     break;
                 }
@@ -115,7 +138,7 @@ public class DeepDataSpaceClient: IApiClient
                 {
                     times++;
                     yield return Result.Waiting(times.ToString());
-                    Thread.Sleep(2000);
+                    Thread.Sleep(500);
                 }
                 else
                 {
@@ -130,7 +153,7 @@ public class DeepDataSpaceClient: IApiClient
         }
     }
     
-    public byte[] DrawBoundingBox(byte[] imageData, SKRect[] bboxes, SKColor color, float strokeWidth)
+    public byte[] DrawBoundingBox(byte[] imageData, SKRect[] bboxes, SKColor color, SKRect[] sboxes, SKColor scolor, float strokeWidth)
     {
         // Step 1: Load the image from the binary data
         using var inputStream = new MemoryStream(imageData);
@@ -149,6 +172,18 @@ public class DeepDataSpaceClient: IApiClient
         // Step 3: Draw the bounding box onto the canvas
         foreach (var bbox in bboxes)
             skCanvas.DrawRect(bbox, paint);
+        
+        if (sboxes.Length > 0)
+        {
+            using var paint2 = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                Color = scolor,
+                StrokeWidth = strokeWidth
+            };
+            foreach (var bbox in sboxes)
+                skCanvas.DrawRect(bbox, paint2);
+        }
 
         // Step 4: Save the modified image back to a binary array
         using var outputStream = new MemoryStream();

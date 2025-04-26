@@ -19,7 +19,7 @@ namespace AI_Proxy_Web.Apis;
 [ApiClass(M.讯飞星火, "讯飞星火", "讯飞星火4.0。", 39,  canUseFunction:false, priceIn: 70, priceOut: 70)]
 public class ApiXfSpark:ApiBase
 {
-    private XfSparkClient _client;
+    protected XfSparkClient _client;
 
     public ApiXfSpark(IServiceProvider serviceProvider):base(serviceProvider)
     {
@@ -52,6 +52,15 @@ public class ApiXfSpark:ApiBase
 
 }
 
+[ApiClass(M.讯飞X1, "讯飞X1", "讯飞星火X1推理模型。", 130, ApiClassTypeEnum.推理模型, canUseFunction: true, priceIn: 70, priceOut: 70)]
+public class ApiXfSparkX1 : ApiXfSpark
+{
+    public ApiXfSparkX1(IServiceProvider serviceProvider) : base(serviceProvider)
+    {
+        _client.ModelName = "x1";
+        _client.HostBase = "https://spark-api-open.xf-yun.com/v2";
+    }
+}
 
 /// <summary>
 /// 讯飞星火大模型接口
@@ -59,8 +68,8 @@ public class ApiXfSpark:ApiBase
 /// </summary>
 public class XfSparkClient: OpenAIClientBase, IApiClient
 {
-    private static String hostUrl = "https://spark-api-open.xf-yun.com/v1/chat/completions"; //星火问答
-    private static string modelName = "4.0Ultra";
+    private static String imageHostUrl = "wss://spark-api.cn-huabei-1.xf-yun.com/v2.1/image"; //图片理解
+    private static string imageDomain = "general"; //图片理解的Domain参数
     private static String ttsHostUrl = "wss://tts-api.xfyun.cn/v2/tts"; //文本转语音
     protected String APPID;//从开放平台控制台中获取
     private String APIKEY;//从开放平台控制台中获取
@@ -76,12 +85,14 @@ public class XfSparkClient: OpenAIClientBase, IApiClient
         APIKEY = configHelper.GetConfig<string>("Service:XunFei:Key");
         APISecret = configHelper.GetConfig<string>("Service:XunFei:Secret");
     }
+    public string ModelName = "4.0Ultra";
+    public string HostBase = "https://spark-api-open.xf-yun.com/v1";
     
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
         return JsonConvert.SerializeObject(new
         {
-            model = modelName,
+            model = ModelName,
             messages = GetBasicMessages(input.ChatContexts),
             temperature = input.Temprature,
             stream,
@@ -98,7 +109,7 @@ public class XfSparkClient: OpenAIClientBase, IApiClient
     {
         HttpClient client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Add("Authorization",$"Bearer {APIKEY}:{APISecret}");
-        var url = hostUrl;
+        var url = HostBase+"/chat/completions";
         var msg = GetMsgBody(input, true);
         var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
         {
@@ -118,7 +129,7 @@ public class XfSparkClient: OpenAIClientBase, IApiClient
     {
         HttpClient client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Add("Authorization",$"Bearer {APIKEY}:{APISecret}");
-        var url = hostUrl;
+        var url = HostBase+"/chat/completions";
         var msg = GetMsgBody(input, false);
         var resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
         {

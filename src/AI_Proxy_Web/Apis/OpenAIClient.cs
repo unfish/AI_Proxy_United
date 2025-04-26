@@ -106,8 +106,8 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
             model = model,
             messages = msgs,
             tools,
-            temperature = input.Temprature,
-            max_tokens = 16000,
+            temperature = isReasoningModel ? 1 : input.Temprature,
+            max_completion_tokens = 16000,
             user = input.External_UserId,
             stream
         }, jSetting);
@@ -227,12 +227,32 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
             {
                 if (qc.Type == ChatType.图片Base64)
                 {
-                    contents.Add(new { type = "input_image", image_url = $"data:{(string.IsNullOrEmpty(qc.MimeType) ? "image/jpeg" : qc.MimeType)};base64," + qc.Content });
+                    contents.Add(new
+                    {
+                        type = "input_image",
+                        image_url = new
+                        {
+                            url = $"data:{(string.IsNullOrEmpty(qc.MimeType) ? "image/jpeg" : qc.MimeType)};base64," +
+                                  qc.Content
+                        }
+                    });
                 }
                 else if (qc.Type == ChatType.图片Url)
                 {
-                    contents.Add(new { type = "input_image", image_url = qc.Content });
-                }else if (qc.Type == ChatType.文本 || qc.Type== ChatType.提示模板 || qc.Type== ChatType.图书全文)
+                    contents.Add(new { type = "input_image", image_url = new { url = qc.Content } });
+                }
+                else if (qc.Type == ChatType.文件Bytes)
+                {
+                    contents.Add(new
+                    {
+                        type = "file", file = new
+                        {
+                            filename = qc.FileName,
+                            file_data = qc.Bytes != null ? Convert.ToBase64String(qc.Bytes) : qc.Content
+                        }
+                    });
+                }
+                else if (qc.Type == ChatType.文本 || qc.Type== ChatType.提示模板 || qc.Type== ChatType.图书全文)
                 {
                     contents.Add(new { type = "input_text", text = qc.Content });
                 }
@@ -283,7 +303,7 @@ public class OpenAIClient: OpenAIClientBase, IApiClient
                 truncation = "auto",
                 reasoning = new
                 {
-                    generate_summary = extraTools.Contains("computer") ? "concise" : null,
+                    //summary = "concise",
                     effort = GetExtraOptions(input.External_UserId)[0].CurrentValue
                 }
             }, jSetting);

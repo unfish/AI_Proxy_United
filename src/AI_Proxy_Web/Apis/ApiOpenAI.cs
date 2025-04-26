@@ -55,7 +55,7 @@ public class ApiOpenAIBase:ApiBase
     protected override async Task<Result> DoProcessQuery(ApiChatInputIntern input)
     {
         var _client = _serviceProvider.GetRequiredService<OpenAIClient>();
-        _client.Setup(chatUrl, apiKey, modelName, visionModelName);
+        _client.Setup(chatUrl, apiKey, modelName, visionModelName, isReasoningModel, extraTools);
         if (chatUrl.EndsWith("responses"))
         {
             return await _client.SendResponseApiMessage(input);

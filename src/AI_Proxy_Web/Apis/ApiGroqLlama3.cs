@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Llama3_70B, "Llama3 70B", "Llama3.1 70B，最强开源大模型，不过中文能力一般。由Groq提供服务，主打响应速度极快，支持function call。", 41,
+[ApiClass(M.Llama4大杯, "Llama4大杯", "Llama-4-maverick，Meta的最强开源大模型，不过中文能力一般。由Groq提供服务，主打响应速度极快，支持function call。", 41,
     canUseFunction: true, priceIn: 0, priceOut: 0)]
 public class ApiGroqLlama3 : ApiBase
 {
@@ -75,12 +75,12 @@ public class GroqLlama3Client:OpenAIClientBase, IApiClient
     /// <returns></returns>
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
-        bool isImageMsg = IsImageMsg(input.ChatContexts);
-        var model = "llama-3.1-70b-versatile";
+        var model = "meta-llama/llama-4-maverick-17b-128e-instruct";
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
-        var msgs = GetFullMessages(input.ChatContexts);
         var tools = GetToolParamters(input.WithFunctions, _functionRepository, out var funcPrompt);
-        msgs.Insert(0,new TextMessage(){role = "system", content = $"你是一名专业的工作助理，精通各种问题的解答。注意：在之后的所有对话中请使用中文回复用户的问题。{funcPrompt}"});
+        if(!string.IsNullOrEmpty(funcPrompt))
+            input.ChatContexts.AddQuestion(funcPrompt, ChatType.System);
+        var msgs = GetFullMessages(input.ChatContexts);
         return JsonConvert.SerializeObject(new
         {
             model = model,

@@ -260,6 +260,20 @@ public class SenseChatClient: OpenAIClientBase, IApiClient
     }
     
     
+    /// <summary>
+    /// 获取可用模型列表
+    /// </summary>
+    /// <returns></returns>
+    public async Task<string> GetModelList()
+    {
+        var url = "https://api.sensenova.cn/v1/llm/models";
+        var _client = _httpClientFactory.CreateClient();
+        _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {GetJwtToken()}");
+        var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, url));
+        var content = await resp.Content.ReadAsStringAsync();
+        return content;
+    }
+    
     private static String embedUrl = "https://api.sensenova.cn/v1/llm/embeddings";
     private string GetEmbeddingsMsgBody(List<ChatContext.ChatContextContent> qc, bool embedForQuery =  false)
     {
