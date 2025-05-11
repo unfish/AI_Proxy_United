@@ -17,6 +17,7 @@ public class ApiClaude:ApiBase
     {
         _client = serviceProvider.GetRequiredService<ClaudeClient>();
         _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
+        _client.ExtraTools = new[] { ClaudeClient.ExtraTool.WebSearch };
     }
     
     /// <summary>
@@ -61,7 +62,7 @@ public class ApiClaudeAgent : ApiClaude
     {
         _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
         _client.ExtraTools = new[]
-            { ClaudeClient.ExtraTool.Computer, ClaudeClient.ExtraTool.Text_Editor, ClaudeClient.ExtraTool.Bash };
+            { ClaudeClient.ExtraTool.Computer, ClaudeClient.ExtraTool.TextEditor, ClaudeClient.ExtraTool.Bash };
     }
 }
 
@@ -71,7 +72,7 @@ public class ApiClaudeEditor : ApiClaude
     public ApiClaudeEditor(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
-        _client.ExtraTools = new[] { ClaudeClient.ExtraTool.Text_Editor,  ClaudeClient.ExtraTool.Bash };
+        _client.ExtraTools = new[] { ClaudeClient.ExtraTool.TextEditor,  ClaudeClient.ExtraTool.Bash };
     }
 }
 
@@ -81,7 +82,7 @@ public class ApiClaudeThinking : ApiClaude
     public ApiClaudeThinking(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
-        _client.ExtraTools = new[] { ClaudeClient.ExtraTool.Thinking };
+        _client.ExtraTools = new[] { ClaudeClient.ExtraTool.Thinking, ClaudeClient.ExtraTool.WebSearch };
     }
 }
 
@@ -119,8 +120,9 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
     {
         Thinking,
         Computer,
-        Text_Editor,
-        Bash
+        TextEditor,
+        Bash,
+        WebSearch
     }
 
     public ExtraTool[] ExtraTools { get; set; } = new ExtraTool[0];
@@ -269,7 +271,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
             }});
         }
 
-        if (ExtraTools.Contains(ExtraTool.Text_Editor))
+        if (ExtraTools.Contains(ExtraTool.TextEditor))
         {
             tools.Add(new { type = "text_editor_20250124", name = "str_replace_editor" });
             tools.Add(new{name="SendFile", description="Send file to user.", input_schema=new
@@ -285,6 +287,10 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
         {
             tools.Add(new { type = "bash_20250124", name = "bash" });
         }
+        if (ExtraTools.Contains(ExtraTool.WebSearch))
+        {
+            tools.Add(new { type = "web_search_20250305", name = "web_search", max_uses = 5 });
+        }
         
         if(functions!=null)
         {
@@ -295,7 +301,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
                         name = t.Name, description = t.Description, input_schema = t.Parameters
                     }));
         }
-        var max_tokens = ExtraTools.Contains(ExtraTool.Computer)||ExtraTools.Contains(ExtraTool.Text_Editor)||ExtraTools.Contains(ExtraTool.Bash)
+        var max_tokens = ExtraTools.Contains(ExtraTool.Computer)||ExtraTools.Contains(ExtraTool.TextEditor)||ExtraTools.Contains(ExtraTool.Bash)
             ? 4096
             : (ExtraTools.Contains(ExtraTool.Thinking) ? 64000 : 32000);
         var think = ExtraTools.Contains(ExtraTool.Thinking)
@@ -391,7 +397,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
         client.DefaultRequestHeaders.Add("anthropic-version","2023-06-01");
         if(ExtraTools.Contains(ExtraTool.Thinking) && ExtraTools.Length==1)
             client.DefaultRequestHeaders.Add("anthropic-beta","output-128k-2025-02-19");
-        if(ExtraTools.Contains(ExtraTool.Computer)||ExtraTools.Contains(ExtraTool.Text_Editor)||ExtraTools.Contains(ExtraTool.Bash))
+        if(ExtraTools.Contains(ExtraTool.Computer)||ExtraTools.Contains(ExtraTool.TextEditor)||ExtraTools.Contains(ExtraTool.Bash))
             client.DefaultRequestHeaders.Add("anthropic-beta","computer-use-2025-01-24");
             
         var url = hostUrl;

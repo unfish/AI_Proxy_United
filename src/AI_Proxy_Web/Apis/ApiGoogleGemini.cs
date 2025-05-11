@@ -18,7 +18,7 @@ public class ApiGoogleGemini:ApiBase
     public ApiGoogleGemini(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client = serviceProvider.GetRequiredService<GoogleGeminiClient>();
-        _client.SetModel("gemini-2.5-pro-preview-03-25");
+        _client.SetModel("gemini-2.5-pro-preview-05-06");
     }
     
     /// <summary>
@@ -70,7 +70,7 @@ public class ApiGoogleGeminiExp : ApiGoogleGemini
 {
     public ApiGoogleGeminiExp(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _client.SetModel("gemini-2.0-flash-exp");
+        _client.SetModel("gemini-2.0-flash-preview-image-generation");
         _client.useSystem = false;
         _client.canGenImage = true;
         _client.useFunctions = false;
