@@ -242,7 +242,7 @@ public class AutomationClient: IApiClient
                             var duration = o["duration"].Value<int>();
                             Thread.Sleep(duration * 1000);
                         }
-                    }else if (call.Name == "str_replace_editor")
+                    }else if (call.Name == "str_replace_based_edit_tool")
                     {
                         yield return Result.Reasoning($"call text_editor()\n\n");
                         var o = JObject.Parse(call.Arguments);
@@ -386,7 +386,7 @@ public class AutomationHelper
 
     public static readonly string[] AutomationFunctions = new[]
     {
-        "computer", "str_replace_editor", "bash", "OpenUrl", "GetPageHtml", "GoBack", "SendFile", "ClickElement", "InputElement", "Screenshot"
+        "computer", "str_replace_based_edit_tool", "bash", "OpenUrl", "GetPageHtml", "GoBack", "SendFile", "ClickElement", "InputElement", "Screenshot"
     };    
     
     private IBrowser? _browser;
