@@ -84,6 +84,7 @@ public class ApiTencentT1 : ApiTencent
     public ApiTencentT1(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client.SetModel("hunyuan-t1-latest");
+        _client.SetVisionModel("hunyuan-t1-vision");
     }
 }
 
@@ -109,6 +110,7 @@ public class TencentClient:OpenAIClientBase, IApiClient
     protected string SecretId;
     protected string SecretKey;
     private string modelName = "hunyuan-turbos-latest";
+    private string visionModelName = "hunyuan-turbos-vision";
 
     private string APIKEY; //OpenAI 兼容模式 APIKEY
     private string hostUrl = "https://api.hunyuan.cloud.tencent.com/v1/chat/completions";
@@ -116,7 +118,10 @@ public class TencentClient:OpenAIClientBase, IApiClient
     {
         modelName = name;
     }
-    
+    public void SetVisionModel(string name)
+    {
+        visionModelName = name;
+    }
     /// <summary>
     /// 要增加上下文功能通过input里面的history数组变量，数组中每条记录是user和bot的问答对
     /// </summary>
@@ -126,7 +131,7 @@ public class TencentClient:OpenAIClientBase, IApiClient
     public string GetMsgBody(ApiChatInputIntern input, bool stream)
     {
         bool isImageMsg = IsImageMsg(input.ChatContexts);
-        var model = isImageMsg ? "hunyuan-turbos-vision" : modelName;
+        var model = isImageMsg ? visionModelName : modelName;
         var tools = GetToolParamters(input.WithFunctions, _functionRepository, out var funcPrompt);
         if (!string.IsNullOrEmpty(funcPrompt))
             input.ChatContexts.AddQuestion(funcPrompt, ChatType.System);

@@ -9,7 +9,7 @@ public enum M
     MiniMax大杯 = 4,
     百度文心 = 5,
     _360 = 6,
-    Claude小杯 = 7,
+    Claude大杯 = 7,
     智谱清言 = 8,
     百川智能 = 9,
     腾讯混元 = 10,
@@ -102,6 +102,7 @@ public enum M
     文心iRAG = 213,
     MiniMax画图 = 214,
     混元3D = 215,
+    GPTImage = 216,
     
     智谱视频 = 220,
     MiniMax视频 = 221,

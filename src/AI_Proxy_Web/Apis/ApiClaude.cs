@@ -9,14 +9,14 @@ using Newtonsoft.Json.Linq;
 
 namespace AI_Proxy_Web.Apis;
 
-[ApiClass(M.Claude中杯, "Claude 3.7", "Claude 3.7 Sonet是Open AI目前最强劲的竞争对手，代码能力最强，支持图文，200K上下文长度，价格跟GPT4o一样，比较适中。", 3, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
+[ApiClass(M.Claude中杯, "Claude 4", "Claude 4 Sonet是Open AI目前最强劲的竞争对手，代码能力最强，支持图文，200K上下文长度，价格跟GPT4o一样，比较适中。", 3, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 25, priceOut: 108)]
 public class ApiClaude:ApiBase
 {
     protected ClaudeClient _client;
     public ApiClaude(IServiceProvider serviceProvider):base(serviceProvider)
     {
         _client = serviceProvider.GetRequiredService<ClaudeClient>();
-        _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
+        _client.SetModelName("claude-sonnet-4-20250514"); //中杯
         _client.ExtraTools = new[] { ClaudeClient.ExtraTool.WebSearch };
     }
     
@@ -46,21 +46,21 @@ public class ApiClaude:ApiBase
     
 }
 
-[ApiClass(M.Claude小杯, "Claude小杯*", "强烈推荐：Claude 3.5 Haiku小杯是Open AI目前最强劲的竞争对手，体积小，推理能力强，支持图文，200K上下文长度，价格便宜速度极快，能力介于GPT4o mini和4o之间。", 2,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 1.8, priceOut: 9)]
-public class ApiClaude3Haiku : ApiClaude
+[ApiClass(M.Claude大杯, "Claude大杯", "强烈推荐：Claude 4 Opus大杯是Anthropic最强大的模型，价格比较贵。", 4,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 120, priceOut: 600)]
+public class ApiClaudeOpus : ApiClaude
 {
-    public ApiClaude3Haiku(IServiceProvider serviceProvider):base(serviceProvider)
+    public ApiClaudeOpus(IServiceProvider serviceProvider):base(serviceProvider)
     {
-        _client.SetModelName("claude-3-5-haiku-20241022"); //小杯
+        _client.SetModelName("claude-opus-4-20250514"); //大杯
     }
 }
 
-[ApiClass(M.ClaudeAgent, "Claude RPA", "Claude 3.7 RPA版可以操作一个虚拟浏览器，通过自动分解操作步骤并控制浏览器一步一步进行点击或输入的方式进行一系列自主操作来完成用户任务，需要有客户端来调用并负责实际完成任务。", 320, type: ApiClassTypeEnum.辅助模型,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
+[ApiClass(M.ClaudeAgent, "Claude RPA", "Claude 4 RPA版可以操作一个虚拟浏览器，通过自动分解操作步骤并控制浏览器一步一步进行点击或输入的方式进行一系列自主操作来完成用户任务，需要有客户端来调用并负责实际完成任务。", 320, type: ApiClassTypeEnum.辅助模型,  canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
 public class ApiClaudeAgent : ApiClaude
 {
     public ApiClaudeAgent(IServiceProvider serviceProvider):base(serviceProvider)
     {
-        _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
+        _client.SetModelName("claude-4-opus-20250514"); //中杯
         _client.ExtraTools = new[]
             { ClaudeClient.ExtraTool.Computer, ClaudeClient.ExtraTool.TextEditor, ClaudeClient.ExtraTool.Bash };
     }
@@ -71,17 +71,17 @@ public class ApiClaudeEditor : ApiClaude
 {
     public ApiClaudeEditor(IServiceProvider serviceProvider):base(serviceProvider)
     {
-        _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
+        _client.SetModelName("claude-4-opus-20250514"); //中杯
         _client.ExtraTools = new[] { ClaudeClient.ExtraTool.TextEditor,  ClaudeClient.ExtraTool.Bash };
     }
 }
 
-[ApiClass(M.ClaudeThinking, "Claude Thinking", "Claude 3.7 sonet推理版使用带推理能力的Claude模型，适合复杂的编程任务及数理问题。", 122, type: ApiClassTypeEnum.推理模型, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
+[ApiClass(M.ClaudeThinking, "Claude Thinking", "Claude 4 sonet推理版使用带推理能力的Claude模型，适合复杂的编程任务及数理问题。", 122, type: ApiClassTypeEnum.推理模型, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:true, priceIn: 21.6, priceOut: 108)]
 public class ApiClaudeThinking : ApiClaude
 {
     public ApiClaudeThinking(IServiceProvider serviceProvider):base(serviceProvider)
     {
-        _client.SetModelName("claude-3-7-sonnet-20250219"); //中杯
+        _client.SetModelName("claude-sonnet-4-20250514"); //中杯
         _client.ExtraTools = new[] { ClaudeClient.ExtraTool.Thinking, ClaudeClient.ExtraTool.WebSearch };
     }
 }
@@ -273,7 +273,7 @@ public class ClaudeClient:OpenAIClientBase, IApiClient
 
         if (ExtraTools.Contains(ExtraTool.TextEditor))
         {
-            tools.Add(new { type = "text_editor_20250124", name = "str_replace_editor" });
+            tools.Add(new { type = "text_editor_20250429", name = "str_replace_based_edit_tool" });
             tools.Add(new{name="SendFile", description="Send file to user.", input_schema=new
             {
                 type="object", required=new[]{"path"}, properties = new

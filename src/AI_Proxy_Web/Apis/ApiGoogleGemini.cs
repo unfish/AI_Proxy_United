@@ -52,16 +52,7 @@ public class ApiGoogleGeminiFlash : ApiGoogleGemini
 {
     public ApiGoogleGeminiFlash(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        _client.SetModel("gemini-2.5-flash-preview-04-17");
-    }
-}
-
-[ApiClass(M.GeminiThinking, "Gemini2 Thinking", "Gemini 2.0 Flash Thinking Exp实验版本，带思考推理能力的Gemini 2。", 116, ApiClassTypeEnum.推理模型, canProcessImage:true, canProcessMultiImages:true, canProcessFile:true, canUseFunction:false, priceIn: 1, priceOut: 2)]
-public class ApiGoogleGeminiThinking : ApiGoogleGemini
-{
-    public ApiGoogleGeminiThinking(IServiceProvider serviceProvider) : base(serviceProvider)
-    {
-        _client.SetModel("gemini-2.0-flash-thinking-exp-01-21");
+        _client.SetModel("gemini-2.5-flash-preview-05-20");
     }
 }
 
