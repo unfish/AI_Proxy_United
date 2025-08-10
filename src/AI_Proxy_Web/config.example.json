@@ -1,7 +1,8 @@
 {
   "Site": {
     "Host": "https://xxx",
-    "MasterToken": "Ya"
+    "MasterToken": "Ya",
+    "FeiShuDocHost": "https://xxx.feishu.cn/"
   },
   "Connection": {
     "DB": "xx",
@@ -28,208 +29,414 @@
     "xx": 50,
     "xxx": 100
   },
-  "ModelUsed": {
-    "GPT4o_Mini": 1,
-    "GPT4o": 1,
-    "Claude中杯": 1,
-    "Gemini": 1,
-    "GeminiExp": 1,
-    "MiniMax大杯": 1,
-    "阿里通义": 1,
-    "百度文心": 1,
-    "腾讯混元": 1,
-    "阶跃星辰": 1,
-    "月之暗面": 1,
-    "字节豆包": 1,
-    "DeepSeek": 1,
-    "零一万物": 1,
-    "Grok3": 1,
-    "GPT4oLatest": 1,
-    "GPT4_5": 100,
-    "GPT_o3Mini": 1,
-    "GPT_o1": 1,
-    "DeepSeekR1": 1,
-    "智谱Zero": 1,
-    "GeminiThinking": 1,
-    "Doubao_DeepSeekR1": 1,
-    "ClaudeThinking": 1,
-    "DeepClaude": 1,
-    "阿里万相": 1,
-    "混元画图": 1,
-    "文心一格": 1,
-    "文心iRAG": 1,
-    "阶跃画图": 1,
-    "CogView": 1,
-    "万相海报": 1,
-    "MidJourney": 1,
-    "Dall_E3": 1,
-    "Ideogram": 1,
-    "StableDiffusion3": 1,
-    "FLuxPro": 1,
-    "LumaAi画图": 1,
-    "豆包画图": 1,
-    "MiniMax画图": 1,
-    "智谱视频": 1,
-    "MiniMax视频": 50,
-    "LumaAi视频": 1,
-    "万相视频": 1,
-    "豆包Seaweed": 1,
-    "JinaDeepSearch": 1,
-    "Perplexity": 1,
-    "PerplexityPro": 1,
-    "PerplexityReasoning": 1,
-    "GPT4oSearch": 1,
-    "DeepSearch": 1,
-    "拆书助手": 1,
-    "Automation": 1,
-    "OneAgent": 1,
-    "模型对战": 1,
-    "模型群聊": 1,
-    "语音服务": 1
-  },
-  "Service": {
-    "OpenAI": {
-      "Host": "https://api.openai.com/",
-      "Key": "",
-      "WssHost": "wss://api.openai.com"
+  "Models": {
+    "Default": {
+      "Id": 0, "Order": 0, "Provider": "OpenAI", "Type": "问答模型", "ModelName":"gpt-4.1-mini", "DisplayName": "GPT4.1 Mini", "Description": "GPT 4.1 mini, 回复速度快，接口更便宜也更稳定，100W上下文长度，能力强于GPT 4o，速度和价格更有优势。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "EmbeddingDimensions": 1536, "EmbeddingModelName": "text-embedding-3-large"
     },
-    "Claude": {
-      "Host": "https://api.anthropic.com/",
+    "GPT4o": {
+      "Id": 1, "Order": 1, "Provider": "OpenAI", "Type": "问答模型", "ModelName":"gpt-4.1", "DisplayName": "GPT4.1", "Description": "GPT 4.1标准版, 回复速度快，接口更便宜也更稳定，能力强于GPT 4o，速度和价格更有优势。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "EmbeddingDimensions": 1536, "EmbeddingModelName": "text-embedding-3-large"
+    },
+    "GPT4oSearch": {
+      "Id": 194, "Order": 194, "Provider": "OpenAI", "Type": "搜索模型", "ModelName":"gpt-4o-search-preview", "DisplayName": "GPT4 Search", "Description": "GPT 4o Search 自带网络信息搜索功能，但搜索功能收费。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "ExtraTools": "web_search_preview", "Hidden": true
+    },
+    "DeerApi_GPT5_Mini": {
+      "Id": 46, "Order": 46, "Provider": "DeerApi_Response", "Type": "问答模型", "ModelName":"gpt-5-mini", "DisplayName": "GPT5 Mini", "Description": "GPT 5 mini DeerApi通道。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "UseThinkingMode": true, "Hidden": true
+    },
+    "DeerApi_GPT5": {
+      "Id": 47, "Order": 47, "Provider": "DeerApi_Response", "Type": "问答模型", "ModelName":"gpt-5", "DisplayName": "GPT 5", "Description": "GPT 5 标准版 DeerApi通道。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "UseThinkingMode": true, "Hidden": true
+    },
+    "ClaudeSonet": {
+      "Id": 18, "Order": 3, "Provider": "Claude", "Type": "问答模型", "ModelName":"claude-sonnet-4-20250514", "DisplayName": "Claude 4", "Description": "Claude 4 Sonet是Open AI目前最强劲的竞争对手，代码能力最强，支持图文，200K上下文长度，价格跟GPT4o一样，比较适中。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "ExtraTools": "web_search", "Hidden": true
+    },
+    "ClaudeOpus": {
+      "Id": 7, "Order": 4, "Provider": "Claude", "Type": "问答模型", "ModelName":"claude-opus-4-1-20250805", "DisplayName": "Claude大杯", "Description": "Claude 4.1 Opus大杯是Anthropic最强大的模型，价格比较贵。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "Hidden": true
+    },
+    "ClaudeRPA": {
+      "Id": 330, "Order": 330, "Provider": "Claude", "Type": "辅助模型", "ModelName":"claude-sonnet-4-20250514", "DisplayName": "Claude RPA", "Description": "Claude RPA版可以操作虚拟浏览器和本地文件，通过自动分解操作步骤并控制浏览器一步一步进行点击或输入的方式进行一系列自主操作来完成用户任务，需要有客户端来调用并负责实际完成任务。",
+      "MaxTokens": 4096, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "ExtraTools": "computer,text_editor,bash,web_search", "ExtraHeaders": "anthropic-beta:computer-use-2025-01-24", "Hidden": true
+    },
+    "ClaudeEditor": {
+      "Id": 331, "Order": 331, "Provider": "Claude", "Type": "辅助模型", "ModelName":"claude-sonnet-4-20250514", "DisplayName": "Claude Editor", "Description": "Claude Editor版可以操作操作指定的文件，自主查看文件当前内容，并根据需要完成文件的内容编辑指令，需要有客户端来调用并负责实际完成任务。",
+      "MaxTokens": 4096, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "ExtraTools": "text_editor", "ExtraHeaders": "anthropic-beta:computer-use-2025-01-24", "Hidden": true
+    },
+    "ClaudeSonetThinking": {
+      "Id": 122, "Order": 122, "Provider": "Claude", "Type": "推理模型", "ModelName":"claude-sonnet-4-20250514", "DisplayName": "Claude Thinking", "Description": "Claude 4 sonet推理版使用带推理能力的Claude模型，适合复杂的编程任务及数理问题。",
+      "MaxTokens": 64000, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "ExtraTools": "web_search", "UseThinkingMode": true, "Hidden": true
+    },
+    "DeepSeekV3": {
+      "Id": 13, "Order": 30, "Provider": "DeepSeek", "Type": "问答模型", "ModelName":"deepseek-chat", "DisplayName": "DeepSeek V3", "Description": "DeepSeek V3开源大模型。号称超越了GPT4的开源大模型，中文能力、推理能力、代码能力都很强。",
+      "MaxTokens": 8000, "CanUseFunction": true, "Hidden": true
+    },
+    "DeepSeekR1": {
+      "Id": 114, "Order": 114, "Provider": "DeepSeek", "Type": "推理模型", "ModelName":"deepseek-reasoner", "DisplayName": "DeepSeek R1", "Description": "DeepSeek R1开源类o1思考大模型。号称超越了o1的推理大模型，不支持图片。",
+      "MaxTokens": 40000, "CanUseFunction": true, "Hidden": true
+    },
+    "GeminiPro": {
+      "Id": 12, "Order": 5, "Provider": "Google", "Type": "问答模型", "ModelName":"gemini-2.5-pro", "DisplayName": "Gemini Pro", "Description": "强烈推荐：Gemini 2.5 Pro是Google推出的最新多模态大模型实验版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错，代码能力也不错。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "Hidden": true
+    },
+    "GeminiFlash": {
+      "Id": 27, "Order": 6, "Provider": "Google", "Type": "问答模型", "ModelName":"gemini-2.5-flash", "DisplayName": "Gemini小杯", "Description": "Gemini 2.5 Flash是Google推出的Flash版多模态大模型正式版，支持100万字超长上下文，支持图文，也支持函数调用，总结能力不错。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "Hidden": true
+    },
+    "GeminiExp": {
+      "Id": 30, "Order": 7, "Provider": "Google", "Type": "问答模型", "ModelName":"gemini-2.0-flash-preview-image-generation", "DisplayName": "Gemini实验版", "Description": "Gemini 2 Flash Exp 实验版本，可以文本画图，支持图文混排输出。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "CanProcessFile": true, "ExtraTools": "GenImage", "Hidden": true
+    },
+    "PPIO_DeepSeekR1": {
+      "Id": 117, "Order": 117, "Provider": "PPIO", "Type": "推理模型", "ModelName":"deepseek/deepseek-r1-0528", "DisplayName": "DS R1 PPIO版", "Description": "DeepSeek R1 PPIO服务器备用通道，官方API不可用时备用。",
+      "MaxTokens": 40000, "CanUseFunction": true, "Hidden": true
+    },
+    "PPIO_QwenCoder": {
+      "Id": 41, "Order": 41, "Provider": "PPIO", "Type": "问答模型", "ModelName":"qwen/qwen3-coder-480b-a35b-instruct", "DisplayName": "千问3Coder", "Description": "qwen3-coder-480b-a35b-instruct。",
+      "MaxTokens": 40000, "CanUseFunction": true, "Hidden": true
+    },
+    "Qwen2.5": {
+      "Id": 3, "Order": 10, "Provider": "Qwen", "Type": "问答模型", "ModelName":"qwen-plus-latest", "VisionModelName":"qwen-vl-plus-latest", "DisplayName": "千问2.5", "Description": "阿里通义千问 2.5 Plus，号称中文能力超过GPT 4 Turbo。支持图文问答，识图能力极强，支持function call。",
+      "MaxTokens": 8000, "CanUseFunction": true, "EmbeddingModelName": "text-embedding-v2", "Hidden": true
+    },
+    "QwenCoder": {
+      "Id": 40, "Order": 40, "Provider": "Qwen", "Type": "问答模型", "ModelName":"qwen3-coder-plus", "DisplayName": "千问Coder", "Description": "通义千问Qwen3-Coder-Plus，开源的代码专用模型。",
+      "MaxTokens": 8000, "CanUseFunction": true, "Hidden": true, "Hidden": true
+    },
+    "MiniMax": {
+      "Id": 4, "Order": 4, "Provider": "MiniMax", "Type": "问答模型", "ModelName":"MiniMax-Text-01", "DisplayName": "MiniMax", "Description": "MiniMax-Text-01，最新版本，专业类写作能力很强，创意类头脑风暴能力也不错，国产能力第一梯队，支持Function Call最好的国产模型。支持100万上下文。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "MiniMax-M1": {
+      "Id": 131, "Order": 131, "Provider": "MiniMax", "Type": "推理模型", "ModelName":"MiniMax-M1", "DisplayName": "MiniMax M1", "Description": "MiniMax-M1，支持100万上下文的推理模型。",
+      "MaxTokens": 32000, "CanUseFunction": true, "Hidden": true
+    },
+    "MoonShot": {
+      "Id": 14, "Order": 26, "Provider": "MoonShot", "Type": "问答模型", "ModelName":"kimi-k2-0711-preview", "VisionModelName":"moonshot-v1-8k-vision-preview", "DisplayName": "Kimi", "Description": "月之暗面Kimi是国产第一个200K长上下文大模型，长文总结能力强，不支持图片，支持Function call。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "Step-2": {
+      "Id": 21, "Order": 25, "Provider": "StepFun", "Type": "问答模型", "ModelName":"step-2-16k", "VisionModelName":"step-1o-turbo-vision", "DisplayName": "阶跃Step2", "Description": "阶跃星辰step-2 + step-1v，支持图文，千亿参数，号称逻辑性最强。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "Step-3": {
+      "Id": 128, "Order": 128, "Provider": "StepFun", "Type": "推理模型", "ModelName":"step-3", "DisplayName": "阶跃Step3", "Description": "阶跃星辰step-3，最新图文推理模型。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "GLM4.5": {
+      "Id": 8, "Order": 28, "Provider": "ZhiPu", "Type": "问答模型", "ModelName":"glm-4.5", "VisionModelName":"glm-4v-plus-0111", "DisplayName": "智谱GLM4.5", "Description": "智谱清言GLM-4.5，来自清华，中文开源大模型中最强，支持图文，支持function call。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "Doubao": {
+      "Id": 16, "Order": 28, "Provider": "Doubao", "Type": "问答模型", "ModelName":"ep-20250611143606-d4h8x", "DisplayName": "豆包1.6", "Description": "豆包 1.6 Pro 是字节新推出的大模型，32K上下文，图片理解能力强。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "EmbeddingDimensions": 2048, "EmbeddingModelName": "ep-20250807141912-t8tww", "Hidden": true
+    },
+    "DoubaoThinking": {
+      "Id": 129, "Order": 129, "Provider": "Doubao", "Type": "推理模型", "ModelName":"ep-20250725080056-qqwv5", "DisplayName": "豆包Thinking", "Description": "豆包 1.6 Pro Thinking 是字节新推出的推理大模型，32K上下文，图片理解能力强。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "Doubao_R1": {
+      "Id": 121, "Order": 121, "Provider": "Doubao", "Type": "推理模型", "ModelName":"bot-20250219112924-ctwzs", "DisplayName": "DS R1火山版", "Description": "DeepSeek R1火山引擎备用接口，自带搜索引擎可以联网搜索后回答。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "WebXin4.5": {
+      "Id": 5, "Order": 13, "Provider": "Baidu", "Type": "问答模型", "ModelName":"ernie-4.5-turbo-32k", "VisionModelName":"ernie-4.5-turbo-vl-32k", "DisplayName": "文心4.5", "Description": "百度文心一言4.5 Turbo，对话能力提升，支持图片，支持function call。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "WebXinX1": {
+      "Id": 127, "Order": 127, "Provider": "Baidu", "Type": "推理模型", "ModelName":"ernie-x1-turbo-32k", "DisplayName": "文心X1", "Description": "文心一言X1 Turbo多模态推理模型。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "TencentHunYuan": {
+      "Id": 10, "Order": 16, "Provider": "Tencent", "Type": "问答模型", "ModelName":"hunyuan-turbos-latest", "DisplayName": "混元TurboS", "Description": "腾讯混元 是腾讯出品的大模型。支持图片问答。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "TencentHunYuanT1": {
+      "Id": 125, "Order": 125, "Provider": "Tencent", "Type": "推理模型", "ModelName":"hunyuan-t1-latest","VisionModelName":"hunyuan-t1-vision", "DisplayName": "混元T1", "Description": "腾讯混元T1，腾讯推出的类R1推理模型。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "XunFei4": {
+      "Id": 2, "Order": 39, "Provider": "XunFei", "Type": "问答模型", "ModelName":"4.0Ultra", "DisplayName": "星火4.0", "Description": "讯飞星火4.0 Ultra。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "XunFeiX1": {
+      "Id": 130, "Order": 130, "Provider": "XunFeiV2", "Type": "推理模型", "ModelName":"x1", "DisplayName": "星火X1", "Description": "讯飞星火X1推理模型。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "Hidden": true
+    },
+    "Ideogram": {
+      "Id": 210, "Order": 210, "Provider": "Ideogram", "Type": "画图模型", "ModelName":"V_3", "DisplayName": "Ideogram", "Description": "Ideogram v3，新兴文生图服务，质量很高，支持中文提示词，支持生成带英文单词的图片。速度有点慢，发送提示后耐心等待。", 
+      "Hidden": true
+    },
+    "FluxPro": {
+      "Id": 208, "Order": 208, "Provider": "FalAI", "Type": "画图模型", "ModelName":"fal-ai/flux-pro/kontext/max/text-to-image", "DisplayName": "Flux Pro", "Description": "FLux Pro，新兴文生图开源模型玩家，质量很高。速度有点慢，发送提示后耐心等待。",
+      "Hidden": true
+    },
+    "SDUltra": {
+      "Id": 204, "Order": 204, "Provider": "Stability", "Type": "画图模型", "ModelName":"ultra", "DisplayName": "SD Ultra", "Description": "Stable Diffusion 3.5 Ultra，文本画图开源届的老大，V3版可以准确处理英文字母，不支持中文指令。",
+      "Hidden": true
+    },
+    "DoubaoImage": {
+      "Id": 212, "Order": 212, "Provider": "DoubaoImage", "Type": "画图模型", "ModelName":"high_aes_general_v30l_zt2i", "DisplayName": "豆包画图", "Description": "豆包是字节新推出的画图模型，得分很高。", 
+      "Hidden": true
+    },
+    "PPIOQwenImage": {
+      "Id": 205, "Order": 205, "Provider": "PPIOMedia", "Type": "画图模型", "ModelName":"qwen-image-txt2img", "DisplayName": "千问画图", "Description": "千问开源的画图模型，可以正确渲染大量中文文字，全网唯一。", 
+      "Hidden": true
+    },
+    "PPIOHailuo02": {
+      "Id": 221, "Order": 221, "Provider": "PPIOMedia", "Type": "视频模型", "ModelName":"minimax-hailuo-02", "DisplayName": "海螺-02", "Description": "MiniMax开源的视频生成模型。",
+      "Hidden": true
+    },
+    "GoogleSearch": {
+      "Id": 186, "Order": 186, "Provider": "GoogleSearch", "Type": "辅助模型", "ModelName":"", "DisplayName": "Google搜索", "Description": "直接调用Google搜索接口，输入搜索词返回网站搜索结果的标题和链接，收费接口。",
+      "Hidden": true
+    },
+    "BoChaSearch": {
+      "Id": 179, "Order": 179, "Provider": "BoChaSearch", "Type": "辅助模型", "ModelName":"", "DisplayName": "博查搜索", "Description": "博查Web搜索接口，输入搜索词返回网站搜索结果的标题和链接，收费接口。",
+      "Hidden": true
+    },
+    "JinaReader": {
+      "Id": 185, "Order": 185, "Provider": "JinaReader", "Type": "辅助模型", "ModelName":"", "DisplayName": "Jina Reader", "Description": "Reader AI是jina.ai提供的免费的通过URL获取网页格式化正文的服务。",
+      "Hidden": true
+    },
+    "Perplexity": {
+      "Id": 189, "Order": 189, "Provider": "Perplexity", "Type": "搜索模型", "ModelName":"sonar", "DisplayName": "Perplexity", "Description": "Perplexity搜索问答模型，通过自动的互联网搜索并生成深度回复来回答复杂问题。",
+      "MaxTokens": 32000, "Hidden": true
+    },
+    "PerplexityPro": {
+      "Id": 190, "Order": 190, "Provider": "Perplexity", "Type": "搜索模型", "ModelName":"sonar-pro", "DisplayName": "Perplexity Pro", "Description": "Perplexity Pro深度搜索问答模型，通过自动的互联网搜索并生成深度回复来回答复杂问题。比普通搜索深度更深，回复更复杂，价格高15倍。",
+      "MaxTokens": 32000, "Hidden": true
+    },
+    "PerplexityReasoning": {
+      "Id": 191, "Order": 191, "Provider": "Perplexity", "Type": "搜索模型", "ModelName":"sonar-reasoning-pro", "DisplayName": "Perplexity推理", "Description": "Perplexity推理问答模型，通过自动的互联网搜索并生成深度回复来回答复杂问题。比普通搜索深度更深，并通过推理逻辑来回答问题，价格高8倍。",
+      "MaxTokens": 32000, "Hidden": true
+    },
+    "Automation": {
+      "Id": 196, "Order": 196, "Provider": "Automation", "Type": "辅助模型", "ModelName":"330", "DisplayName": "RPA助手", "Description": "根据你的指令，自动使用一个虚拟浏览器打开指定的网页，并通过大模型的理解进行一步一步操作来完成指令，可以用于获取信息，但不要做步骤太复杂的操作。",
+      "Hidden": true
+    },
+    "AutomationEditor": {
+      "Id": 197, "Order": 197, "Provider": "Automation", "Type": "辅助模型", "ModelName":"331", "DisplayName": "文件助手", "Description": "根据你的指令，在服务器上自主创建文件、编辑文件，用来保存长文本，并可以直接返回整个文件。",
+      "Hidden": true
+    },
+    "DeepSearch": {
+      "Id": 199, "Order": 199, "Provider": "DeepSearch", "Type": "搜索模型", "ModelName":"18", "DisplayName": "深度搜索", "Description": "提出一个复杂的信息收集任务，调用指定的模型进行任务分解，并自动进行任务编排，调用搜索功能执行多次搜索，并输出一篇完整的结果。", 
+      "Hidden": true
+    },
+    "MultiModels": {
+      "Id": 184, "Order": 184, "Provider": "MultiModels", "Type": "辅助模型", "ModelName":"1,18", "DisplayName": "模型群聊", "Description": "起一个题目，由多个模型自动对话进行深入讨论或辩论，挖掘出更丰富深层的信息。\n你可以提出一个专业的问题，也可以提出两个相对的观点用来辩论。\n请仔细思考你输入的问题，作为提问一方的AI的身份来问这个问题，并将提问方需要完成的任务也加进去。\n每一轮对话结束之后会显示提问一方准备要继续追问的问题，你可以点击使用该问题，也可以忽略它直接输入你想要继续追问的问题。\n要开启新问题的时候不要忘记点开始新会话。",
+      "NeedLongProcessTime": true, "Hidden": true
+    },
+    "OneAgent": {
+      "Id": 198, "Order": 198, "Provider": "OneAgent", "Type": "辅助模型", "ModelName":"18", "DisplayName": "万能助理", "Description": "提出一个复杂任务，由模型进行任务分解，并自动进行任务编排，进行多模型调度，合作共同完成复杂任务，比如市场调研+写方案，客户需求分析+方案+代码，调用浏览器查询资料并生成文件导出数据等等。更多功能有待挖掘。",
+      "NeedLongProcessTime": true, "Hidden": true
+    },
+    "ReadBook": {
+      "Id": 195, "Order": 195, "Provider": "ReadBook", "Type": "辅助模型", "ModelName":"12", "DisplayName": "拆书助手", "Description": "上传一本书，自动阅读理解，总结每一章节的摘要，以及全书的摘要，总结完成后你可以继续对书中的内容进行提问，还可以对全书内容自动生成思维导图。支持PDF/EPUB格式。需要使用Gemini模型。",
+      "CanProcessFile": true, "Hidden": true
+    },
+    "SearchAndSummarize": {
+      "Id": 192, "Order": 192, "Provider": "SearchAndSummarize", "Type": "辅助模型", "ModelName":"186,12", "DisplayName": "搜索摘要", "Description": "调用Google搜索接口进行搜索，然后对返回的结果通过另一个大模型进行总结摘要，只返回摘要内容。",
+      "NeedLongProcessTime": true, "Hidden": true
+    },
+    "DeepDataSpace": {
+      "Id": 320, "Order": 320, "Provider": "DeepDataSpace", "Type": "辅助模型", "ModelName":"", "DisplayName": "图片数数", "Description": "DeepDataSpace T-Rex2交互式目标检测和计数系统，上传一张目标图片和一张参考图片，并指定参考图片中要数数的目标的位置或方框坐标，自动在目标图片中找出所有的目标图片。",
+      "Hidden": true
+    },
+    "AudioService": {
+      "Id": 300, "Order": 300, "Provider": "AudioService", "Type": "辅助模型", "ModelName":"tencent", "DisplayName": "语音服务", "Description": "提供输入文字转语音服务，和输入语音转文字服务。多种接口和音色可选。在飞书里只作为选择音色使用，不要直接对该服务发文字消息。", "Hidden": true
+    },
+    "TencentSSR": {
+      "Id": 301, "Order": 301, "Provider": "TencentSSR", "Type": "辅助模型", "ModelName":"16k_zh_large", "DisplayName": "腾讯语音转文字", "Description": "腾讯语音转文字",
+      "Hidden": true
+    }
+  },
+  "Providers": {
+    "OpenAI": {
+      "Api": "OpenAI",
+      "Host": "https://api.openai.com/v1/",
+      "Key": "",
+      "WssHost": "wss://api.openai.com/"
+    },
+    "OpenAI_Response": {
+      "Api": "OpenAI_Response",
+      "Inherit": "OpenAI"
+    },
+    "OpenAI_Stream": {
+      "Api": "OpenAI_Stream",
+      "Inherit": "OpenAI"
+    },
+    "DeerApi": {
+      "Api": "OpenAI",
+      "Host": "https://api.deerapi.com/v1/",
       "Key": ""
     },
-    "Gemini": {
+    "DeerApi_Response": {
+      "Api": "OpenAI_Response",
+      "Inherit": "DeerApi"
+    },
+    "Claude": {
+      "Api": "Claude",
+      "Host": "https://api.anthropic.com/v1/",
+      "Key": "",
+      "ApiVersion": "2023-06-01"
+    },
+    "Google": {
+      "Api": "Google",
       "Host": "https://generativelanguage.googleapis.com/",
       "Key": ""
     },
-    "GoogleSearch": {
-      "Host": "https://customsearch.googleapis.com/",
-      "Key": "",
-      "cx": ""
-    },
-    "BoChaAI": {
-      "Key": ""
-    },
-    "Grok": {
-      "Host": "https://api.x.ai/",
-      "Key": ""
-    },
-    "Groq": {
-      "Host": "https://api.groq.com/",
-      "Key": ""
-    },
-    "Perplexity": {
-      "Host": "https://api.perplexity.ai/",
-      "Key": ""
-    },
-    "Jina": {
-      "Host": "https://r.jina.ai/",
-      "RemoveUrlProtocal": false,
-      "Key": "",
-      "DeepSearch_Host" : "https://deepsearch.jina.ai/"
-    },
-    "DeerApi": {
-      "Key": ""
-    },
-    "FalAI": {
+    "DeepSeek": {
+      "Api": "OpenAI",
+      "Host": "https://api.deepseek.com/beta/v1/",
       "Key": ""
     },
     "PPIO": {
+      "Api": "OpenAI",
+      "Host": "https://api.ppinfra.com/v3/openai/",
       "Key": ""
     },
-    "Discord": {
-      "CdnHost": ""
-    },
-    "OhMyGpt": {
-      "Host": "https://api.ohmygpt.com/",
+    "PPIOMedia": {
+      "Api": "PPIOMedia",
+      "Host": "https://api.ppinfra.com/v3/",
       "Key": ""
     },
-    "Ideogram": {
-      "Host": "https://api.ideogram.ai/",
-      "Key": "",
-      "Image_Host" : "https://ideogram.ai/"
-    },
-    "LumaAI": {
-      "Host": "https://api.lumalabs.ai/",
-      "Key": "",
-      "CdnHost" : "https://storage.cdn-luma.com/"
-    },
-    "Stability": {
-      "Host": "https://api.stability.ai/v2beta/stable-image/generate/ultra",
-      "Key":  ""
-    },
-    "DeepDataSpace": {
-      "Host": "https://api.deepdataspace.com/tasks/trex_interactive_infer",
-      "Key":  ""
-    },
-    "BaiChuan": {
-      "Key":  ""
-    },
-    "01AI": {
-      "Key": ""
-    },
-    "360AI": {
+    "Perplexity": {
+      "Api": "OpenAI",
+      "Host": "https://api.perplexity.ai/",
       "Key": ""
     },
     "Qwen": {
+      "Api": "Qwen",
+      "Host": "https://dashscope.aliyuncs.com/compatible-mode/v1/",
       "Key": ""
-    },
-    "DeepSeek": {
-      "Key": ""
-    },
-    "Doubao": {
-      "Key": "",
-      "TtsAppId": "",
-      "TtsToken": "",
-      "ModelId": "",
-      "VisionModelId": "",
-      "R1ModelId": "",
-      "SeaweedModelId": ""
-    },
-    "DoubaoImage": {
-      "AccessKey": "",
-      "SecretKey": ""
     },
     "MiniMax": {
+      "Api": "MiniMax",
+      "Host": "https://api.minimax.chat/v1/",
       "Key":  "",
       "GroupId": ""
     },
-    "MoonShot": {
-      "Key": ""
+    "MiniMaxImage": {
+      "Api": "MiniMaxImage",
+      "Inherit": "MiniMax"
     },
-    "SenseChat": {
+    "MoonShot": {
+      "Api": "OpenAI",
+      "Host": "https://api.moonshot.cn/v1/",
       "Key": ""
     },
     "StepFun": {
+      "Api": "OpenAI",
+      "Host": "https://api.stepfun.com/v1/",
+      "Key": ""
+    },
+    "ZhiPu": {
+      "Api": "ZhiPu",
+      "Host": "https://open.bigmodel.cn/api/paas/v4/",
+      "APPID": "",
+      "Secret" : ""
+    },
+    "Doubao": {
+      "Api": "Doubao",
+      "Host": "https://ark.cn-beijing.volces.com/api/v3/",
+      "Key": "",
+      "TtsAppId": "",
+      "TtsToken": "",
+      "AccessKey": "",
+      "SecretKey": ""
+    },
+    "DoubaoImage": {
+      "Api": "DoubaoImage",
+      "Host": "https://visual.volcengineapi.com",
+      "Inherit": "Doubao"
+    },
+    "DoubaoVideo": {
+      "Api": "DoubaoVideo",
+      "Inherit": "Doubao"
+    },
+    "DoubaoSSR": {
+      "Api": "DoubaoSSR",
+      "Inherit": "Doubao"
+    },
+    "Baidu": {
+      "Api": "OpenAI",
+      "Host": "https://qianfan.baidubce.com/v2/",
       "Key": ""
     },
     "Tencent": {
+      "Api": "OpenAI",
+      "Host": "https://api.hunyuan.cloud.tencent.com/v1/",
       "Key": "",
       "AppId": "",
       "SecretId": "",
       "SecretKey": ""
     },
+    "TencentImage": {
+      "Api": "TencentImage",
+      "Inherit": "Tencent"
+    },
+    "Tencent3D": {
+      "Api": "Tencent3D",
+      "Inherit": "Tencent"
+    },
+    "TencentSSR": {
+      "Api": "TencentSSR",
+      "Inherit": "Tencent"
+    },
     "XunFei": {
+      "Api": "OpenAI",
+      "Host": "https://spark-api-open.xf-yun.com/v1/",
       "APPID": "",
-      "Key": "",
-      "Secret" : ""
+      "Key": ""
     },
-    "ZhiPu": {
-      "APPID": "",
-      "Secret" : ""
+    "XunFeiV2": {
+      "Api": "OpenAI",
+      "Host": "https://spark-api-open.xf-yun.com/v2/",
+      "Inherit": "XunFei"
     },
-    "WenXin": {
+    "Ideogram": {
+      "Api": "Ideogram",
+      "Host": "https://api.ideogram.ai/",
       "Key": "",
-      "Secret": "",
-      "AK": "",
-      "SK": ""
+      "Image_Host" : "https://ideogram.ai/"
     },
-    "WenXinImage": {
-      "Key": "",
-      "Secret": ""
+    "FalAI": {
+      "Api": "FalAI",
+      "Host": "https://fal.run/",
+      "Key": ""
     },
-    "Seniverse": {
+    "Stability": {
+      "Api": "Stability",
+      "Host": "https://api.stability.ai/",
+      "Key":  ""
+    },
+    "GoogleSearch": {
+      "Api": "GoogleSearch",
+      "Host": "https://customsearch.googleapis.com/",
       "Key": "",
-      "Secret": ""
+      "cx": "",
+      "JinaReaderId": 185
+    },
+    "BoChaSearch": {
+      "Api": "BoChaSearch",
+      "Host": "https://api.bochaai.com/v1/",
+      "Key": "sk-",
+      "JinaReaderId": 185
+    },
+    "JinaReader": {
+      "Api": "JinaReader",
+      "Host": "https://r.jina.ai/",
+      "Key": "",
+      "RemoveUrlProtocal": true
+    },
+    "DeepDataSpace": {
+      "Api": "DeepDataSpace",
+      "Host": "https://api.deepdataspace.com/",
+      "Key":  ""
     }
   }
 }

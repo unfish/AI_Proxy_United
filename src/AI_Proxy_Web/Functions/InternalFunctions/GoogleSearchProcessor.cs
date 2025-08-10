@@ -1,4 +1,5 @@
 using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Helpers;
 using AI_Proxy_Web.Models;
 using Newtonsoft.Json.Linq;
 
@@ -16,6 +17,6 @@ public class GoogleSearchProcessor: BaseProcessor
         var arg = JObject.Parse(funcArgs);
         var prompt = arg["q"].Value<string>();
         input.ChatContexts = ChatContexts.New(prompt);
-        input.ChatModel = (int)M.Google搜索;
+        input.ChatModel = DI.GetModelIdByName("GoogleSearch");;
     }
 }

@@ -1,5 +1,7 @@
 ### 为飞书聊天机器人度身定制的AI智能助手后端项目，集成(几乎)所有大模型，在飞书聊天窗口中调用Multi Agent完成复杂任务。同时提供统一模型调用接口。
 
+#### 2025-08-10 V2版本重大更新，修改类设计及继承结构大幅精简核心代码，增加OpenAI兼容接口的第三方平台，或者增加同一个平台的新模型，都不再需要修改代码，直接通过配置文件进行控制。详情见下方配置部分。另外删除了部分不使用的模型，比如midjourney。ideogram升级到了V3版本等等。
+
 #### 本项目只是个纯代码分享，不涉及任何账号申请、账号共享等内容，您需要自行解决账号问题。
 
 #### 本项目的开发理念：与AI的对话方式应该尽量自然，而最自然的交互方式，就是聊天工具的聊天窗口。
@@ -102,7 +104,8 @@ docker run --name ai_proxy -p 8080:8080 -d ai_proxy
 {
   "Site": {
     "Host": "https://xxx/",  //通过什么域名可以访问到这个容器，可以带路径，一定要/结尾
-    "MasterToken": "Ya" //用来保护WebApi接口的Token，在你想开发自己的权限处理方式之前，生成一个复杂Token放在这儿，可以用这个Token来请求Api接口
+    "MasterToken": "Ya", //用来保护WebApi接口的Token，在你想开发自己的权限处理方式之前，生成一个复杂Token放在这儿，可以用这个Token来请求Api接口
+    "FeiShuDocHost": "https://xxx.feishu.cn/" //如果需要用到飞书文档的自动生成、自动解读，需要配置公司的飞书文档的域名地址
   },
   "Connection": {
     "DB": "xx", //Mysql标准连接字符串,如 server=xxx;database=xxx;uid=xxx;pwd=xxx;SslMode=none
@@ -129,13 +132,48 @@ docker run --name ai_proxy -p 8080:8080 -d ai_proxy
     "xx": 50, //前面的xx是飞书里面的用户ID，在飞书后台的组织架构中可以查看每个人的user_id，注意不是OpenId。飞书发过来的消息里也都有每个人的user_id，后面的数字就是他的权限级别。
     "xxx": 100 //这里只需要添加高级别用户，不添加的都默认为0
   },
-  "ModelUsed": {
-    "GPT4o_Mini": 1, //哪些模型需要开启可见。因为项目接了所有模型，但实际上有些可能暂时没价值，或暂时不想让别人看到。只有在这里添加了的才会在他的飞书上显示出来可选。
-    "GPT4o": 10, //前面是模型的ID，不是Name，也就是枚举值M里面的名字，后面的数字如果1就是所有人可见，如果大于1，就只有上面的用户权限>=它的才可见。如果是0就不可见了。虽然不可见，但API仍然可以通过这个模型ID来调用它。
+  "Models": { //核心的模型配置段，所有的模型默认都是Hidden的，不显示在飞书卡片中，需要启用的模型删除Hidden字段即可。
+    "Default": { //请至少保留一个名字为Default的默认模型，ID可以随意定义，但不能重复。Order用来显示在飞书卡片中时排序，可以随意定义，Provider依赖于下面Providers段的配置, Type用于飞书卡片中对模型类型分组，选项包含：问答模型、推理模型、搜索模型、画图模型、视频模型、辅助模型，ModelName是当前模型在调用时的具体模型代码，DisplayName是在飞书卡片中显示的当前模型的名称，Description是在飞书卡片中显示的该模型的描述信息，如果配置了EmbeddingModelName，该模型可以使用向量化接口，不配置则忽略。
+      "Id": 0, "Order": 0, "Provider": "OpenAI", "Type": "问答模型", "ModelName":"gpt-4.1-mini", "DisplayName": "GPT4.1 Mini", "Description": "GPT 4.1 mini, 回复速度快，接口更便宜也更稳定，100W上下文长度，能力强于GPT 4o，速度和价格更有优势。",
+      "MaxTokens": 8000, "CanUseFunction": true, "CanProcessImage": true, "EmbeddingDimensions": 1536, "EmbeddingModelName": "text-embedding-3-large"
+    },
+    "GPT4o": {
+      "Id": 1, "Order": 1, "Provider": "OpenAI", "Type": "问答模型", "ModelName":"gpt-4.1", "DisplayName": "GPT4.1", "Description": "GPT 4.1标准版, 回复速度快，接口更便宜也更稳定，能力强于GPT 4o，速度和价格更有优势。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "EmbeddingDimensions": 1536, "EmbeddingModelName": "text-embedding-3-large"
+    },
+    "DeerApi_GPT5_Mini": {
+      "Id": 46, "Order": 46, "Provider": "DeerApi_Response", "Type": "问答模型", "ModelName":"gpt-5-mini", "DisplayName": "GPT5 Mini", "Description": "GPT 5 mini DeerApi通道。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "UseThinkingMode": true, "Hidden": true
+    },
+    "DeerApi_GPT5": {
+      "Id": 47, "Order": 47, "Provider": "DeerApi_Response", "Type": "问答模型", "ModelName":"gpt-5", "DisplayName": "GPT 5", "Description": "GPT 5 标准版 DeerApi通道。",
+      "MaxTokens": 32000, "CanUseFunction": true, "CanProcessImage": true, "UseThinkingMode": true, "Hidden": true
+    }
+  },
+  "Providers": { //核心的模型接口平台配置段
+    "OpenAI": { //Api是具体的实现类，不可以随意定义，OpenAI和OpenAI_Response代表是标准OpenAI chat completion接口协议和responses接口协议，其它第三方平台如果兼容该协议就可以直接使用这两个API。Host是每个平台的接口地址，Key是每个平台上申请的api key。如果同一个平台要配置多个接口，可以使用Inherit指向父配置，使用前一个配置中的Key等配置。如果有自己的代理地址，修改Host即可。
+      "Api": "OpenAI",
+      "Host": "https://api.openai.com/v1/",
+      "Key": "",
+      "WssHost": "wss://api.openai.com/"
+    },
+    "OpenAI_Response": {
+      "Api": "OpenAI_Response",
+      "Inherit": "OpenAI"
+    },
+    "DeerApi": { //只要兼容OpenAI协议的任意第三方平台不需要新增代码，直接增加一个Provider配置即可，比如apifox, approuter等等都可以，以及国内的各个大模型平台基本都提供了OpenAI兼容接口，都可以直接使用这个方法增加配置
+      "Api": "OpenAI",
+      "Host": "https://api.deerapi.com/v1/",
+      "Key": ""
+    },
+    "DeerApi_Response": {
+      "Api": "OpenAI_Response",
+      "Inherit": "DeerApi"
+    }
   }
 }
 ```
-后面就是各个模型的地址和Key等等，看情况配置，没有配置Key的，上面也不要加为可用。
+增加任意新的聊天模型或模型版本号都可以直接在Models段增加一条新配置，只要ID不重复即可。但是要注意，一些特殊模型（辅助模型）的名称在代码中有用到，不要随意修改，请直接使用examples文件中的配置名称。（ID可以改，配置项的名字不要改就行）
 
 **建议的模型配置：**
 - MiniMax+GoogleSearch，才能使用深度搜索功能（ModelUsed中启用DeepSearch。该功能会用到JinaAI，但Jina不需要Key，是免费服务）。
@@ -145,8 +183,6 @@ docker run --name ai_proxy -p 8080:8080 -d ai_proxy
 MiniMax和Gemini是目前唯二的真正可以使用百万上下文输入API的大模型，阅读整本书，或者调用搜索同时阅读10篇完整网页并提取摘要都不在话下，而且价格都很便宜。
 
 大部分公司模型名称是统一的，不用配置，只有豆包（火山引擎）每个人看到的模型ID是不一样的，需要配置。还有的公司有两套验证机制，所以不同的功能可能要配置多个Key。
-
-Midjourney模型走的不是官方接口，目前是固定使用OnMyGpt家的代理接口，如果要使用需要开通他家的账号，Midjourney画图以后会自动返回扩展操作的卡片按钮，跟官方一样，可以继续扩图或重画，一直点按钮就一直画。
 
 如果已经在运行中，需要修改配置，可以在项目目录下改完config.json文件，使用 docker cp config.json ai_proxy:/App 命令把文件复制进容器，然后通过飞书发送消息"RELOAD CONFIG"让立即生效。（发消息时不带双引号，全大写）
 
@@ -177,13 +213,10 @@ Midjourney模型走的不是官方接口，目前是固定使用OnMyGpt家的代
 
   用户上传一本书(PDF/EPUB)，程序会自动执行一个固定逻辑，先将内容发送给模型，要求返回章节结构，并以固定的JSON格式结构化返回，然后程序会遍历返回的JSON数组，每一章调用一次大模型，让它总结这一章的内容。全部总结完成之后，再调用一次让它重新总结整本书的内容。然后程序结束，前面的内容都保存在上下文里，你可以继续对书的内容进行提问对话。
   所以假设这本书的原文占用10万Token，里面分成10个章节，那么这一轮调用下来就会用掉至少110万Token。所以尽量用免费的Gemini。
+  
 - 模型对战/模型群聊
 
   这两个模型可以调用多个其它模型进行对话，程序中设定了初始提示词，并在每轮对话过程中处理每个模型收到的消息的格式，确保其它模型说的话放在user部分，它自己说的放在assistant部分。多个模型可以像人一样就一个话题进行越来越深入的讨论。为了防止自动讨论浪费过多Token，每次只会自动一个循环，然后你点击继续按钮才会再来一轮。如果你发现讨论的话题有偏离，也可以自己加一句话进去，这句话会当作下一个模型说的话加入到讨论列表中。（不过实测讨论并不会深入到哪里去，大模型很容易陷入拍马屁而不是反驳。）
-
-- DeepClaude
-
-  调用DeepSeek R1做需求分析和方案整理，利用R1的推理和补充细节的能力写出非常详细的需求文档和项目方案设计，然后调用Claude 3.7根据方案来写代码实现。原理跟模型对战差不多，但控制权在用户端，并不会自动切换模型。内部记录当前处理阶段，R1并不能一次就返回完全符合要求的答案，所以你可以直接在方案阶段进行多轮对话，确保方案已经满意，然后点击一下写代码的快捷按钮，程序就会将当前处理模型切换到Claude开始写代码，你的下一次输入就会直接由Claude来处理，所以你也可以跟Claude多轮交互来优化代码。
 
 - 深度搜索
 

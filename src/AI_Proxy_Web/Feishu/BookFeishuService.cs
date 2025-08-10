@@ -29,7 +29,7 @@ public class BookFeishuService : FeishuService, IBookFeishuService
 
     public override int GetUserDefaultModel(string user_id)
     {
-        return (int)M.拆书助手;
+        return DI.GetModelIdByName("ReadBook");
     }
 
     public override string GetControllerPath()

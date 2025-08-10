@@ -1,4 +1,5 @@
 using AI_Proxy_Web.Apis;
+using AI_Proxy_Web.Apis.V2.Extra;
 using AI_Proxy_Web.Database;
 using AI_Proxy_Web.Helpers;
 using Hangfire;

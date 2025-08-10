@@ -2,6 +2,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using AI_Proxy_Web.Apis;
 using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Apis.V2;
+using AI_Proxy_Web.Apis.V2.Extra;
 using AI_Proxy_Web.Database;
 using AI_Proxy_Web.Functions;
 using AI_Proxy_Web.Helpers;
@@ -23,19 +25,22 @@ public class ChatController : BaseController
     private ILogRepository _logRepository;
     private IApiFactory _apiFactory;
     private IServiceProvider _serviceProvider;
-    private IAudioService _audioService;
+    private ApiAudioServiceProvider? _audioService = null;
     private const string contextCachePrefix = "web";
     private string SiteHost;
 
-    public ChatController(ILogRepository logRepository, IApiFactory apiFactory, IServiceProvider serviceProvider,
-        IAudioService audioService, ConfigHelper configHelper)
+    public ChatController(ILogRepository logRepository, IApiFactory apiFactory, IServiceProvider serviceProvider, ConfigHelper configHelper)
     {
         this._logRepository = logRepository;
         this._apiFactory = apiFactory;
         this._serviceProvider = serviceProvider;
-        this._audioService = audioService;
         SiteHost = configHelper.GetConfig<string>("Site:Host");
         MasterToken = configHelper.GetConfig<string>("Site:MasterToken");
+        var audio = _apiFactory.GetApiCommon("AudioService");
+        if (audio.ApiProvider != null)
+        {
+            this._audioService = (ApiAudioServiceProvider)audio.ApiProvider;
+        }
     }
 
     /// <summary>
@@ -123,13 +128,13 @@ public class ChatController : BaseController
                     apiInput.ChatModel = 0;
             }
 
-            if (!DI.IsApiClass(input.ChatModel))
+            if (!DI.IsModel(input.ChatModel))
                 await HttpContext.SSESendChatEventAsync(
                     JsonConvert.SerializeObject(new ResultDto()
                         { resultType = ResultType.Error.ToString(), result = "ChatModel参数错误，该模型不存在" }));
             else
             {
-                var _api = _apiFactory.GetService(input.ChatModel);
+                var _api = _apiFactory.GetApiCommon(input.ChatModel);
                 if (!input.WithVoice || input.WithFullVoice)
                 {
                     var sb = new StringBuilder();
@@ -148,7 +153,7 @@ public class ChatController : BaseController
                         }
                     }
 
-                    if (input.WithFullVoice && sb.Length > 0)
+                    if (input.WithFullVoice && _audioService != null && sb.Length > 0)
                     {
                         var resp2 = await GetFullAudioFileName(sb, input.WithVoiceId, input.WithVoiceFormat);
                         if (resp2.resultType == ResultType.AudioUrl)
@@ -272,16 +277,16 @@ public class ChatController : BaseController
         var apiInput = GetApiChatInput(input, check.user.UserId, check.user.FeishuId, "query");
         apiInput.IgnoreAutoContexts = true; //query方式作为一次性调用接口，不考虑上下文
         
-        if (!DI.IsApiClass(input.ChatModel))
+        if (!DI.IsModel(input.ChatModel))
             return R.Error<ResultDto>("ChatModel参数错误，该模型不存在");
 
         //GPT4接口请求自动替换成MiniMax
         if (input.ChatModel == 1)
             input.ChatModel = 4;
-        var _api = _apiFactory.GetService(input.ChatModel);
+        var _api = _apiFactory.GetApiCommon(input.ChatModel);
         var resp = await _api.ProcessQuery(apiInput);
         var result = new ResultDto() { resultType = resp.resultType.ToString(), result = resp.ToString() };
-        if (input.WithVoice && resp.resultType == ResultType.Answer)
+        if (input.WithVoice && _audioService != null && resp.resultType == ResultType.Answer)
         {
             var resp2 = await _audioService.TextToVoice(resp.ToString(), input.WithVoiceId, input.WithVoiceFormat);
             var bin = ((FileResult)resp2).result;
@@ -368,7 +373,7 @@ public class ChatController : BaseController
             if (!string.IsNullOrEmpty(prompt))
                 qc.Add(ChatContext.NewContent(prompt));
 
-            var _api = _apiFactory.GetService(chatModel);
+            var _api = _apiFactory.GetApiCommon(chatModel);
             var sb = new StringBuilder();
             var resultType = ResultType.Error;
             var sender = new AudioMessageSender(HttpContext, _apiFactory);
@@ -403,7 +408,7 @@ public class ChatController : BaseController
             
             if (stream)
             {
-                if (withFullVoice && sb.Length > 0)
+                if (withFullVoice && _audioService != null && sb.Length > 0)
                 {
                     var resp2 = await GetFullAudioFileName(sb, withVoiceId, withVoiceFormat);
                     if (resp2.resultType == ResultType.AudioUrl)
@@ -420,7 +425,7 @@ public class ChatController : BaseController
             {
                 var result = new ResultDto()
                     { resultType = resultType.ToString(), result = sb.ToString() };
-                if (withFullVoice && sb.Length > 0)
+                if (withFullVoice && _audioService != null && sb.Length > 0)
                 {
                     var resp2 = await GetFullAudioFileName(sb, withVoiceId, withVoiceFormat);
                     if (resp2.resultType == ResultType.AudioUrl)
@@ -516,7 +521,7 @@ public class ChatController : BaseController
             UserId = check.user.UserId, UserToken = token, External_UserId = extUserId,
             ContextCachePrefix = contextCachePrefix
         };
-        var _api = _apiFactory.GetService(chatModel);
+        var _api = _apiFactory.GetApiCommon(chatModel);
         await foreach (var res in _api.ProcessChat(apiInput))
         {
             await HttpContext.SSESendChatEventAsync(
@@ -769,7 +774,7 @@ public class ChatController : BaseController
         if (!string.IsNullOrEmpty(check.error))
             return R.Error<EmbeddingsDto>(check.error);
 
-        var _api = _apiFactory.GetService(input.ChatModel);
+        var _api = _apiFactory.GetApiCommon(input.ChatModel);
         var qc = new List<ChatContext.ChatContextContent>();
         bool multi = false;
         if (!string.IsNullOrEmpty(input.Question))
@@ -806,7 +811,7 @@ public class ChatController : BaseController
         var check = CheckUserPermission(ChatFrom.Api);
         if (!string.IsNullOrEmpty(check.error))
             return R.Error<string>(check.error);
-        var api = _serviceProvider.GetRequiredService<TencentAudioStreamClient>();
+        var api = (ApiTencentSSRProvider)_apiFactory.GetApiCommon("TencentSSR").ApiProvider;
         return R.New(api.GetWssVoiceToTextUrl());
     }
 
@@ -830,7 +835,7 @@ public class ChatController : BaseController
             else
             {
                 using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-                var server = new AiWebSocketServer(webSocket, _serviceProvider, service, provider);
+                var server = new AiWebSocketServer(webSocket, _serviceProvider, _apiFactory, service, provider);
                 await server.ProcessAsync(extraParams);
             }
         }

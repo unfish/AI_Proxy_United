@@ -1,3 +1,4 @@
+using AI_Proxy_Web.Apis.V2.Extra;
 using AI_Proxy_Web.Functions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,7 +21,6 @@ public enum ResultType
     Waiting, //运行中等待响应，流式接口中可用
     ImageUrl, //返回单张图片
     ImageBytes, //返回单张图片二进制或Base64
-    MjActions, //actions MidJourneyActions操作按钮数组，流式接口中图片和按钮按顺序分开返回
     AudioUrl,
     AudioBytes, //音频的二进制或Base64
     VideoUrl,
@@ -38,7 +38,6 @@ public enum ResultType
     MultiMediaResult, //图文混排结果集
     FollowUp, //消息结束后发送可自动提问的气泡消息
     LogSaved, //本次聊天日志已保存，返回日志ID和SessionId，可以用来获取该条日志
-    AliWanXiangAuxiliary, //阿里万相画图返回的参数，可以二次调用进行图片放大
 }
 
 public class Result
@@ -187,23 +186,10 @@ public class SearchResult : Result
     }
 }
 
-public class MidjourneyActionsResult : Result
-{
-    public MidJourneyClient.MidJourneyActions result { get; set; }
-    public static MidjourneyActionsResult Answer(MidJourneyClient.MidJourneyActions actions)
-    {
-        return new MidjourneyActionsResult() {resultType = ResultType.MjActions, result = actions};
-    }
-    public override string ToString()
-    {
-        return JsonConvert.SerializeObject(result);
-    }
-}
-
 public class JinaArticleResult : Result
 {
-    public JinaAiClient.Article result { get; set; }
-    public static JinaArticleResult Answer(JinaAiClient.Article article)
+    public JinaArticle result { get; set; }
+    public static JinaArticleResult Answer(JinaArticle article)
     {
         return new JinaArticleResult() {resultType = ResultType.JinaArticle, result = article};
     }

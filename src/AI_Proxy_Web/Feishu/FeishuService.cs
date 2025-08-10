@@ -721,13 +721,6 @@ public class FeishuService: BaseFeishuService, IFeishuService
                 type = "primary",
                 value = new {action = linkUrl, type = "link_copytodoc"}
             });
-            actionSizes.Add(new
-            {
-                tag = "button",
-                text = new {tag = "plain_text", content = "搬到知识库"},
-                type = "primary",
-                value = new {action = linkUrl, type = "link_copytowiki"}
-            });
         }
 
         actionSizes.Add(new
@@ -798,81 +791,6 @@ public class FeishuService: BaseFeishuService, IFeishuService
         return await _logRepository.GetChatPrompts();
     }
 
-    #region 具体模型的处理接口
-
-    /// <summary>
-    /// 发送Midjourney继续按钮
-    /// </summary>
-    /// <param name="result"></param>
-    /// <param name="user_id"></param>
-    public void SendMidJourneyActions(MidJourneyClient.MidJourneyActions actions, string user_id)
-    {
-        if (actions != null && actions.Actions.Length > 0)
-        {
-            var msg = GetMidjourneyActionsCardMessage(actions.TaskId, actions.Actions, actions.Tunnel);
-            if (!string.IsNullOrEmpty(msg))
-                SendMessage(user_id, msg, FeishuMessageType.Interactive);
-        }
-    }
-
-    /// <summary>
-    /// 创建MidJourney继续处理的任务
-    /// </summary>
-    /// <param name="taskid"></param>
-    /// <param name="customId"></param>
-    /// <param name="tunnel"></param>
-    /// <param name="user_id"></param>
-    public async Task CreateMidJourneyActionTask(string taskid, string customId, string tunnel, string user_id)
-    {
-        var client = _serviceProvider.GetRequiredService<ApiMidJourney>();
-        string msg_id = SendMessage(user_id, "任务处理中，请稍候...");
-        await foreach (var res in client.ProcessAction(taskid, customId, tunnel))
-        {
-            if (res.resultType == ResultType.Waiting)
-            {
-                if (int.TryParse(res.ToString(), out var times))
-                {
-                    UpdateText(msg_id, $"任务处理中，请稍候...{times}");
-                }
-                else
-                {
-                    UpdateText(msg_id, res.ToString());
-                }
-            }
-            else if (res.resultType == ResultType.Error)
-            {
-                UpdateText(msg_id, "任务失败：" + res.ToString());
-            }
-            else if (res.resultType == ResultType.ImageBytes)
-            {
-                var image_key = UploadImageToFeishu(((FileResult)res).result);
-                if (!string.IsNullOrEmpty(image_key))
-                {
-                    SendMessage(user_id, image_key, FeishuMessageType.Image);
-                }
-            }
-            else if (res.resultType == ResultType.MjActions)
-            {
-                SendMidJourneyActions(((MidjourneyActionsResult)res).result, user_id);
-            }
-        }
-    }
-
-
-    /// <summary>
-    /// 发送阿里万相继续按钮
-    /// </summary>
-    /// <param name="result"></param>
-    /// <param name="user_id"></param>
-    public void SendAliWanXiangActions(string ps, string user_id)
-    {
-        var msg = GetAliWanXiangActionCardMessage(ps);
-        if (!string.IsNullOrEmpty(msg))
-            SendMessage(user_id, msg, FeishuMessageType.Interactive);
-    }
-    
-    #endregion
-
     #region 核心方法，处理模型问答流程
 
     /// <summary>
@@ -898,8 +816,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         string user_id, bool no_function = false, int specialModel = -1)
     {
         var text = qc.FirstOrDefault(t => t.Type == ChatType.文本)?.Content ?? "";
-        if (text.StartsWith("https://yesmro101.feishu.cn/docx/") ||
-            text.StartsWith("https://yesmro101.feishu.cn/wiki/"))
+        if (text.StartsWith(FeiShuDocHost))
         {
             var res = await GetFeiShuDocumentAndSummarize(user_id, text);
             if (!string.IsNullOrEmpty(res.message))
@@ -924,7 +841,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
 
         var sbAnswer = new StringBuilder();
         var sbReason = new StringBuilder();
-        var _api = _apiFactory.GetService(input.ChatModel);
+        var _api = _apiFactory.GetApiCommon(input.ChatModel);
         var sender = new FeishuMessageSender(this, user_id);
         sender.Start();
         await foreach (var res in _api.ProcessChat(input))
@@ -1045,14 +962,6 @@ public class FeishuService: BaseFeishuService, IFeishuService
             {
                 SendMessage(user_id, file_key, FeishuMessageType.File);
             }
-        }
-        else if (res.resultType == ResultType.MjActions)
-        {
-            SendMidJourneyActions(((MidjourneyActionsResult)res).result, user_id);
-        }
-        else if (res.resultType == ResultType.AliWanXiangAuxiliary)
-        {
-            SendAliWanXiangActions(res.ToString(), user_id);
         }
         else if (res.resultType == ResultType.SearchResult)
         {
@@ -1235,7 +1144,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
     {
         ChatContexts.ClearChatContexts(user_id, contextCachePrefix);
         var chatModel = GetUserDefaultModel(user_id);
-        var _api = _apiFactory.GetService(chatModel);
+        var _api = _apiFactory.GetApiCommon(chatModel);
         _api.StartNewContext(user_id);
         SendMessage(user_id, "新会话", FeishuMessageType.Divider, roolUp);
     }
@@ -1338,7 +1247,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         };
 
         var sb = new StringBuilder();
-        var _api = _apiFactory.GetService(input.ChatModel);
+        var _api = _apiFactory.GetApiCommon(input.ChatModel);
         await foreach (var res in _api.ProcessChat(input))
         {
             if (res.resultType == ResultType.Answer)
@@ -1526,36 +1435,18 @@ public class FeishuService: BaseFeishuService, IFeishuService
         {
             await AskGpt(menu, user_id);
         }
-        else if (type == "wanx_enlarge")
-        {
-            await AskGpt(ChatContext.NewContentList(menu, ChatType.阿里万相扩展参数), user_id,
-                specialModel: (int)M.万相海报);
-        }
         else if (type.StartsWith("EO:"))
         {
             var ss = type.Split(':');
             var model = int.Parse(ss[1]);
             var styleType = ss[2];
-            var api = _apiFactory.GetService(model);
+            var api = _apiFactory.GetApiCommon(model);
             api.SetExtraOptions(user_id, styleType, menu);
             return GetCardActionSuccessMessage(GetExtraOptionsCardMessage(user_id, model, api.GetExtraOptions(user_id)));
-        }
-        else if (type == "midj_action")
-        {
-            var taskid = value["taskid"] != null ? value["taskid"].Value<string>() : "";
-            if (!string.IsNullOrEmpty(taskid) && !string.IsNullOrEmpty(menu))
-            {
-                var tunnel = value["tunnel"] == null ? "NORMAL" : value["tunnel"].Value<string>();
-                await CreateMidJourneyActionTask(taskid, menu, tunnel, user_id);
-            }
         }
         else if (type == "link_copytodoc")
         {
             await GetUrlContentAndCreateDocument(user_id, menu);
-        }
-        else if (type == "link_copytowiki")
-        {
-            await GetUrlContentAndCreateDocument(user_id, menu, "wiki");
         }
         else if (type == "link_summarize")
         {
@@ -1634,7 +1525,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         var tips = ChatModel.SetDefaultModel(user_id, contextCachePrefix, chatModel);
         if(sendMsg)
             SendMessage(user_id, tips);
-        var api = _apiFactory.GetService(chatModel);
+        var api = _apiFactory.GetApiCommon(chatModel);
         var options = api.GetExtraOptions(user_id);
         if (options != null && options.Count > 0)
         {
@@ -1696,7 +1587,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         var ctx = GetChatContexts(user_id);
         if (ctx.Contexts.Count > 0 && ctx.Contexts.Last().AC.Any(t => t.Type == ChatType.文本))
         {
-            var api = _apiFactory.GetService(M.语音服务);
+            var api = _apiFactory.GetApiCommon("AudioService");
             var resp = await api.ProcessQuery(ApiChatInput.New() with
             {
                 QuestionContents =
@@ -1923,23 +1814,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
             var doc_id = CreateUserDocument(user_id, title, blocks);
             if (!string.IsNullOrEmpty(doc_id))
             {
-                if (type == "wiki")
-                {
-                    var node = "S1WfwdsfditPmnkYcLAcVIfInib"; // https://yesmro101.feishu.cn/wiki/S1WfwdsfditPmnkYcLAcVIfInib
-                    var mr = await MoveDocToWiki(user_id, doc_id, node);
-                    if (mr.success)
-                    {
-                        SendMessage(user_id, $"文档已创建成功。https://yesmro101.feishu.cn/wiki/{mr.message}", FeishuMessageType.PlainText);
-                    }
-                    else
-                    {
-                        SendMessage(user_id, mr.message);
-                    }
-                }
-                else
-                {
-                    SendMessage(user_id, $"文档已创建成功。https://yesmro101.feishu.cn/docx/{doc_id}", FeishuMessageType.PlainText);
-                }
+                SendMessage(user_id, $"文档已创建成功。{FeiShuDocHost}docx/{doc_id}", FeishuMessageType.PlainText);
             }
 
             return (!string.IsNullOrEmpty(doc_id), string.Empty);
@@ -1950,64 +1825,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
             return (success, title);
         }
     }
-    
-    private async Task<(bool success, string message)> MoveDocToWiki(string user_id, string doc_id, string wiki_node)
-    {
-        var token = GetUserAccessToken(user_id);
-        var request = new RestRequest($"open-apis/wiki/v2/spaces/7047301435226062850/nodes/move_docs_to_wiki", Method.Post);
-        request.AddParameter("Authorization", $"Bearer {token}", ParameterType.HttpHeader);
-        request.AddJsonBody(new
-        {
-            parent_wiki_token= wiki_node,
-            obj_type= "docx",
-            obj_token= doc_id
-        });
-        var response = _restClient.GetClient().Execute(request, Method.Post);
-        var o = JObject.Parse(response.Content);
-        if (o["code"].Value<int>() == 0)
-        {
-            if (o["data"]["wiki_token"] != null)
-            {
-                return (true, o["data"]["wiki_token"].Value<string>());
-            }
-            else if (o["data"]["task_id"] != null)
-            {
-                var task_id = o["data"]["task_id"].Value<string>();
-                for(var i=0;i<5;i++)
-                {
-                    Thread.Sleep(1000);
-                    var res = await CheckMoveDocTask(token, task_id);
-                    if (res.success)
-                        return res;
-                }
 
-                return (false, "移动任务超时未成功，请手动确认结果。");
-            }else
-                return (false, o["msg"].Value<string>());
-        }
-        else
-        {
-            return (false, "移动到知识库失败，"+o["msg"].Value<string>());
-        }
-    }
-
-    private async Task<(bool success, string message)> CheckMoveDocTask(string token, string task_id)
-    {
-        var request = new RestRequest($"open-apis/wiki/v2/tasks/{task_id}?task_type=move", Method.Get);
-        request.AddParameter("Authorization", $"Bearer {token}", ParameterType.HttpHeader);
-        var response = _restClient.GetClient().Execute(request, Method.Get);
-        var o = JObject.Parse(response.Content);
-        if (o["code"].Value<int>() == 0)
-        {
-            if (o["data"]["task"]["move_result"] != null && (o["data"]["task"]["move_result"] as JArray).Count>0)
-            {
-                var t = (o["data"]["task"]["move_result"] as JArray)[0];
-                return (true, t["node"]["node_token"].Value<string>());
-            }
-        }
-        return (false, o["msg"].Value<string>());
-    }
-    
     public async Task<(bool success, string message)> GetUrlContentAndSummarize(string user_id, string url)
     {
         bool success = false;
@@ -2027,7 +1845,7 @@ public class FeishuService: BaseFeishuService, IFeishuService
         }
         else
         {
-            var api2 = _apiFactory.GetService(DI.GetApiClassAttributeId(typeof(ApiJinaAi)));
+            var api2 = _apiFactory.GetApiCommon("JinaReader");
             var res2 = await api2.ProcessQuery(ApiChatInput.New() with
             {
                 QuestionContents = ChatContext.NewContentList(url), IgnoreAutoContexts = true
@@ -2071,22 +1889,22 @@ public class FeishuService: BaseFeishuService, IFeishuService
     
     public async Task<(bool success, string message)> GetFeiShuDocumentAndSummarize(string user_id, string url)
     {
-        if (!url.StartsWith("https://yesmro101.feishu.cn/docx/") && !url.StartsWith("https://yesmro101.feishu.cn/wiki/"))
+        if (!url.StartsWith(FeiShuDocHost))
             return (false, "仅支持飞书云文档和知识库云文档类型");
         var token = GetUserAccessToken(user_id);
         if (string.IsNullOrEmpty(token))
             return (false, "");
         
         var docId = "";
-        if (url.StartsWith("https://yesmro101.feishu.cn/docx/"))
+        if (url.StartsWith($"{FeiShuDocHost}docx/"))
         {
-            docId = url.Substring("https://yesmro101.feishu.cn/docx/".Length);
+            docId = url.Substring($"{FeiShuDocHost}docx/".Length);
             if (docId.IndexOf("?") > 0)
                 docId = docId.Substring(0, docId.IndexOf("?"));
         }
         else
         {
-            var wikiId = url.Substring("https://yesmro101.feishu.cn/wiki/".Length);
+            var wikiId = url.Substring($"{FeiShuDocHost}wiki/".Length);
             if (wikiId.IndexOf("?") > 0)
                 wikiId = wikiId.Substring(0, wikiId.IndexOf("?"));
             var request = new RestRequest($"open-apis/wiki/v2/spaces/get_node?token={wikiId}", Method.Get);

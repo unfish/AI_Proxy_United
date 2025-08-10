@@ -1,4 +1,5 @@
 using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Helpers;
 using AI_Proxy_Web.Models;
 using Newtonsoft.Json.Linq;
 
@@ -18,6 +19,6 @@ public class SearchAndSummarizeProcessor: BaseProcessor
         var target = arg["target"].Value<string>();
         input.ChatContexts = ChatContexts.New(q);
         input.ChatContexts.AddQuestion(target);
-        input.ChatModel = (int)M.搜索摘要;
+        input.ChatModel = DI.GetModelIdByName("SearchAndSummarize");
     }
 }

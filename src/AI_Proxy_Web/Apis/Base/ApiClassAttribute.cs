@@ -18,6 +18,7 @@ public class ApiClassAttribute : Attribute
 { 
     public int Id { get; set; }
     public string Name { get; set; }
+    public string DisplayName { get; set; }
     public string Description { get; set; }
     public int Order { get; set; }
     public ApiClassTypeEnum Type { get; set; }
@@ -31,22 +32,14 @@ public class ApiClassAttribute : Attribute
     public int NeedLevel { get; set; } //需要指定等级以上的客户才能使用这个模型
     public decimal PriceIn { get; set; } //百万Token输入价格
     public decimal PriceOut { get; set; } //百万Token输出价格，画图模型是单张价格
-    public ApiClassAttribute(M id, string name, string description, int order, ApiClassTypeEnum type = ApiClassTypeEnum.问答模型, 
-        bool canUseFunction = false, bool canProcessFile = false, bool canProcessImage = false, bool canProcessMultiImages = false, bool canProcessAudio = false,
-        double priceIn = -1, double priceOut = -1, bool needLongProcessTime = false)
-    {
-        this.Id = (int)id;
-        this.Name = name;
-        this.Description = description;
-        this.Order = order;
-        this.Type = type;
-        this.CanUseFunction = canUseFunction;
-        this.CanProcessFile = canProcessFile;
-        this.CanProcessImage = canProcessImage;
-        this.CanProcessMultiImages = canProcessMultiImages;
-        this.CanProcessAudio = canProcessAudio;
-        this.PriceIn = (decimal)priceIn;
-        this.PriceOut = (decimal)priceOut;
-        this.NeedLongProcessTime = needLongProcessTime;
-    }
+    
+    public string Provider { get; set; }
+    public string ModelName { get; set; }
+    public string VisionModelName { get; set; }
+    public int MaxTokens { get; set; }
+    public bool UseThinkingMode { get; set; }
+    public string ExtraTools { get; set; }
+    public string EmbeddingModelName { get; set; }
+    public int EmbeddingDimensions { get; set; }
+    public string ExtraHeaders { get; set; }
 }

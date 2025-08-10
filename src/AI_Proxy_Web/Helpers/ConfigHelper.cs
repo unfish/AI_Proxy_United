@@ -43,6 +43,18 @@ public class ConfigHelper
         LoadConfig();
     }
 
+    public string[] GetAllKeys(string key)
+    {
+        var keys = new List<string>();
+        if (DevConfig != null && DevConfig[key] is not null)
+        {
+            keys.AddRange((DevConfig[key] as JObject).Properties().Select(t => t.Name).ToArray());
+        }
+        if (Config[key] is not null)
+            keys.AddRange((Config[key] as JObject).Properties().Select(t => t.Name).ToArray());
+        return keys.ToArray();
+    }
+    
     public T GetConfig<T>(string key)
     {
         var ks = key.Split(":", StringSplitOptions.RemoveEmptyEntries);
@@ -80,9 +92,33 @@ public class ConfigHelper
             if(tk2 != null && tk2[ks[ks.Length - 1]] is not null)
                 return tk2[ks[ks.Length - 1]].Value<T>();
         }
-
-        if(!key.StartsWith("ModelUsed:"))
-            Console.WriteLine($"Config {key} not found");
+        return default(T);
+    }
+    
+    
+    public T GetProviderConfig<T>(string provider, string key)
+    {
+        if (DevConfig != null && DevConfig["Providers"] is not null && DevConfig["Providers"][provider] is not null && DevConfig["Providers"][provider][key] is not null)
+        {
+            return DevConfig["Providers"][provider][key].Value<T>();
+        }
+        if (DevConfig != null && DevConfig["Providers"] is not null && DevConfig["Providers"][provider] is not null && DevConfig["Providers"][provider]["Inherit"] is not null)
+        {
+            var inherit = DevConfig["Providers"][provider]["Inherit"].Value<string>();
+            if (DevConfig["Providers"][inherit] is not null && DevConfig["Providers"][inherit][key] is not null)
+                return DevConfig["Providers"][inherit][key].Value<T>();
+        }
+        if (Config["Providers"][provider] is not null && Config["Providers"][provider][key] is not null)
+        {
+            return Config["Providers"][provider][key].Value<T>();
+        }
+        if (Config["Providers"][provider] is not null && Config["Providers"][provider]["Inherit"] is not null)
+        {
+            var inherit = Config["Providers"][provider]["Inherit"].Value<string>();
+            if (Config["Providers"][inherit] is not null && Config["Providers"][inherit][key] is not null)
+                return Config["Providers"][inherit][key].Value<T>();
+        }
+        
         return default(T);
     }
 }

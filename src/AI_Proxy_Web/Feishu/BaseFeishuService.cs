@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using System.Web;
 using AI_Proxy_Web.Apis;
 using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Apis.V2.Extra;
 using AI_Proxy_Web.Database;
 using AI_Proxy_Web.Helpers;
 using AI_Proxy_Web.Models;
@@ -57,6 +58,7 @@ public abstract class BaseFeishuService: IBaseFeishuService
     private IHttpClientFactory _httpClientFactory;
     private ConfigHelper _configHelper;
     protected string SiteHost;
+    protected string FeiShuDocHost;
     private static object lockObj = new object();
     public BaseFeishuService(IFeishuRestClient restClient, ILogRepository logRepository, ConfigHelper configHelper,
         IHttpClientFactory httpClientFactory)
@@ -66,6 +68,9 @@ public abstract class BaseFeishuService: IBaseFeishuService
         _httpClientFactory = httpClientFactory;
         _configHelper = configHelper;
         SiteHost = configHelper.GetConfig<string>("Site:Host");
+        FeiShuDocHost = configHelper.GetConfig<string>("Site:FeiShuDocHost");
+        if (!string.IsNullOrEmpty(FeiShuDocHost) && !FeiShuDocHost.EndsWith("/"))
+            FeiShuDocHost += "/";
     }
     
     /// <summary>
@@ -870,7 +875,7 @@ public abstract class BaseFeishuService: IBaseFeishuService
             }
             else
             {
-                SendMessage(user_id, $"文档已创建，但内容插入失败了，{subResp.message}。https://yesmro101.feishu.cn/docx/{doc_id}", FeishuMessageType.PlainText);
+                SendMessage(user_id, $"文档已创建，但内容插入失败了，{subResp.message}。{FeiShuDocHost}docx/{doc_id}", FeishuMessageType.PlainText);
                 return string.Empty;
             }
         }
@@ -1340,7 +1345,7 @@ public abstract class BaseFeishuService: IBaseFeishuService
             var doc_id = CreateUserDocument(user_id, title.Substring(0, Math.Min(title.Length, 20)), blocks);
             if (!string.IsNullOrEmpty(doc_id))
             {
-                SendMessage(user_id, $"文档已创建成功。https://yesmro101.feishu.cn/docx/{doc_id}", FeishuMessageType.PlainText);
+                SendMessage(user_id, $"文档已创建成功。{FeiShuDocHost}docx/{doc_id}", FeishuMessageType.PlainText);
             }
             return (!string.IsNullOrEmpty(doc_id), string.Empty);
         }
@@ -1509,7 +1514,7 @@ public abstract class BaseFeishuService: IBaseFeishuService
                         {
                             try
                             {
-                                var art = JsonConvert.DeserializeObject<JinaAiClient.Article>(qc.Content);
+                                var art = JsonConvert.DeserializeObject<JinaArticle>(qc.Content);
                                 qc.FileName = art.Title;
                                 blocks.Add(new DocumentBlock() { Type = DocumentBlock.BlockType.Text, Content = "原文链接："+ art.Url });
                                 blocks.AddRange(GetBlocksFromMarkdown(art.Content, ChatType.文本));
@@ -1545,7 +1550,7 @@ public abstract class BaseFeishuService: IBaseFeishuService
             title = title.Substring(0, 20) + "...";
         var doc_id = CreateUserDocument(user_id, title, blocks);
         if(!string.IsNullOrEmpty(doc_id))
-            SendMessage(user_id, $"文档已创建成功。https://yesmro101.feishu.cn/docx/{doc_id}", FeishuMessageType.PlainText);
+            SendMessage(user_id, $"文档已创建成功。{FeiShuDocHost}docx/{doc_id}", FeishuMessageType.PlainText);
     }
     
     public List<DocumentBlock> GetBlocksFromMarkdown(string answer, ChatType at)
@@ -1729,25 +1734,6 @@ public abstract class BaseFeishuService: IBaseFeishuService
     {
         var url = SiteHost + "api/ai/log/" + logId+"?sessionId="+sessionId;
         SendMessage(user_id, $"回复内容似乎包含公式，<a href=\"{url}\">点击查看</a>。");
-    }
-    
-    public async Task<byte[]> PdfFileToImage(string fileUrl)
-    {
-        var client = _httpClientFactory.CreateClient();
-        HttpContent content = new StringContent(JsonConvert.SerializeObject(new
-        {
-            url = fileUrl,
-            format = "pdf2png",
-            density = 300,
-            options = new { resize = "50%", trim = "+repage", bordercolor = "white", border = "30x30" }
-        }));
-        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-        var res = await client.PostAsync(new Uri("http://pdf.yesmro.cn/"), content);
-        if (res.IsSuccessStatusCode)
-        {
-            return await res.Content.ReadAsByteArrayAsync();
-        }
-        return null;
     }
     
     #endregion

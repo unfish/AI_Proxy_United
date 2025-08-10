@@ -91,20 +91,10 @@ public class ChatModel
         return allModels.FirstOrDefault()?.Id ?? 0;
     }
 
-    public static bool IsModel(int value, Type apiClass)
-    {
-        return DI.IsApiClass(value, apiClass);
-    }
-    
     public static ApiClassAttribute? GetModel(int value)
     {
         return DI.GetApiClassAttribute(value);
     }
-
-    public static int GetModelId(Type apiClass)
-    {
-        return DI.GetApiClassAttributeId(apiClass);
-    } 
     
     public static int GetModelIdByName(string name)
     {
@@ -113,7 +103,7 @@ public class ChatModel
     
     public static string SetDefaultModel(string ownerId, string prefix, int chatModel)
     {
-        if (DI.IsApiClass(chatModel))
+        if (DI.IsModel(chatModel))
         {
             var chatModelCacheKey = $"{ownerId}_{prefix}_ai_model";
             CacheService.Save(chatModelCacheKey, chatModel.ToString(), DateTime.Now.AddDays(30));

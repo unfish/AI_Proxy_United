@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using AI_Proxy_Web.Apis;
+using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Apis.V2;
 using Newtonsoft.Json;
 using WebSocket = System.Net.WebSockets.WebSocket;
 using WebSocketState = System.Net.WebSockets.WebSocketState;
@@ -21,20 +23,18 @@ public class AiWebSocketServer
 
     private bool finishMessageSended = false;
     public const string finishMessage = "{\"type\": \"end\"}";
-    public AiWebSocketServer(WebSocket socket, IServiceProvider serviceProvider, string server, string provider = "tencent")
+    public AiWebSocketServer(WebSocket socket, IServiceProvider serviceProvider, IApiFactory apiFactory, string server, string provider = "tencent")
     {
         _webSocket = socket;
 
         if (server == "asr")
         {
             if(provider=="doubao")
-                _socketProxy = serviceProvider.GetRequiredService<DoubaoAudioStreamV3Client>();
-            else if(provider=="xunfei")
-                _socketProxy = serviceProvider.GetRequiredService<XfAudioStreamClient>();
+                _socketProxy = (ApiDoubaoSSRV3Client)apiFactory.GetApiCommon("DoubaoSSR").ApiProvider;
             else if(provider=="openai")
-                _socketProxy = serviceProvider.GetRequiredService<OpenAIAudioStreamClient>();
+                _socketProxy = (ApiOpenAIStreamProvider)apiFactory.GetApiCommon("OpenAIStream").ApiProvider;
             else
-               _socketProxy = serviceProvider.GetRequiredService<TencentAudioStreamClient>();
+                _socketProxy = (ApiTencentSSRProvider)apiFactory.GetApiCommon("TencentSSR").ApiProvider;
         }
         else
             throw new Exception("目前只支持asr服务");

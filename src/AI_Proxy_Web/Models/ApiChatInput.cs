@@ -30,7 +30,7 @@ public record ApiChatInput
     public string[]? WithFunctions { get; set; }
 
     /// <summary>
-    /// 宪章userid，用来传递当前用户身份，有AccountId取AccountId，没有就取飞书User_Id
+    /// 业务userid，用来传递当前用户身份，有AccountId取AccountId，没有就取飞书User_Id
     /// </summary>
     public int UserId { get; set; }
 
@@ -50,7 +50,7 @@ public record ApiChatInput
     }
 
     /// <summary>
-    /// 宪章的用户Token，用于调用后端接口
+    /// 业务的用户Token，用于调用后端接口
     /// </summary>
     public string UserToken { get; set; } = string.Empty;
     

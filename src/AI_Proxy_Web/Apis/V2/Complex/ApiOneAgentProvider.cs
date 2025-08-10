@@ -1,0 +1,51 @@
+using System.Text;
+using AI_Proxy_Web.Apis.Base;
+using AI_Proxy_Web.Helpers;
+using AI_Proxy_Web.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+namespace AI_Proxy_Web.Apis.V2.Extra;
+
+[ApiProvider("OneAgent")]
+public class ApiOneAgentProvider : ApiProviderBase
+{
+    protected IApiFactory _apiFactory;
+    public ApiOneAgentProvider(ConfigHelper configHelper, IServiceProvider serviceProvider, IApiFactory apiFactory):base(configHelper,serviceProvider)
+    {
+        _apiFactory = apiFactory;
+    }
+
+    /// <summary>
+    /// 流式接口
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    public override async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
+    {
+        var modelId = int.Parse(_modelName);
+        input.ChatModel = modelId;
+        var api = _apiFactory.GetApiCommon(modelId);
+        bool isFirstChat = input.ChatContexts.Contexts.Count==1;
+        if (isFirstChat) //首次进入增加系统指令
+        {
+            var question = "当你接收到用户的需求，请认真分析用户的目的及深层需求，并列出所有该任务需要用户明确的需求点，例如调研的方向、研究范围、边界、明确的目标市场或目标客户群等等，等用户回答完以后再开始解决问题。先向用户展示你准备采取的工作步骤，然后自动开始执行。\n" +
+                           "执行时请调用万能助理来实际完成任务，通过拆解任务并编排多个助理来高质量的完成该任务。对每一个助理生成的任务指令需要尽量详细描述、逻辑清晰。\n" +
+                           "每个助理任务完成之后你需要根据所有已知结果重新审视工作流程并合理的调整后续任务，必要时可以多次重复调用同一个助手，但需要分配不同的角色名称给它，以便后续任务能够正确的获取对应角色的任务执行结果作为自己的输入。\n" +
+                           "当完成拆解任务后，调用SaveResultToFile函数将任务步骤写入todo.md文件。然后按步骤执行，每一步分别调用合适的助理来进行，比如调用信息搜集助手搜索和收集互联网信息，调用方案设计助手完成客户需要的新方案的编写等等。\n" +
+                           "在每一步助理完成并返回结果以后，调用SaveResultToFile函数将阶段任务的结果追加到report.md文件中。完整结果不用重复输出到任务描述中，通过need_contexts参数传递前一步任务的role名称即可。\n" +
+                           "所有任务完成以后，审视是否需要根据所有过程报告重新生成一份更完整的汇总报告。如果需要，调用一个助理来生成合并汇总的方案，合并重复内容、去芜存菁，然后将它生成的最终报告调用SaveResultToFile函数写入到final_report.md文件中。";
+            input.ChatContexts.AddQuestion(question, ChatType.System);
+        }
+        await foreach (var res in api.ProcessChat(input))
+        {
+            yield return res;
+        }
+        input.IgnoreAutoContexts = true; //跟内层模型共享同一个input对象，内层模型已经保存过上下文了，外层不需要保存，不然会重复叠加上下文
+    }
+    
+    public override void InitSpecialInputParam(ApiChatInputIntern input)
+    {
+        input.IgnoreSaveLogs = true;
+    }
+}

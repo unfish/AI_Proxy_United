@@ -16,7 +16,7 @@ public class AudioMessageSender
     public AudioMessageSender(HttpContext httpContext, IApiFactory apiFactory)
     {
         _httpContext = httpContext;
-        _apiAudio = apiFactory.GetService(M.语音服务);
+        _apiAudio = apiFactory.GetApiCommon("AudioService");
     }
 
     private Task? taskA = null;

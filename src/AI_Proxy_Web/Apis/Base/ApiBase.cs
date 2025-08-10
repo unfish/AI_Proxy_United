@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
+using AI_Proxy_Web.Apis.V2.Extra;
 using AI_Proxy_Web.Database;
 using AI_Proxy_Web.Functions;
 using AI_Proxy_Web.Helpers;
@@ -18,11 +19,13 @@ public abstract class ApiBase
     private IServiceProvider _serviceProvider;
     private ILogRepository _logRepository;
     private IFunctionRepository _functionRepository;
+    private IApiFactory _apiFactory;
     protected ApiBase(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
         _logRepository = serviceProvider.GetRequiredService<ILogRepository>();
         _functionRepository = serviceProvider.GetRequiredService<IFunctionRepository>();
+        _apiFactory = serviceProvider.GetRequiredService<IApiFactory>();
     }
 
     #region 并发检查和长循环自动停止检查
@@ -63,7 +66,6 @@ public abstract class ApiBase
     {
         StopSignsDictionary.TryRemove($"{input.External_UserId}_{input.ContextCachePrefix}_Stoping", out _);
     }
-
     
     #endregion
 
@@ -163,7 +165,8 @@ public abstract class ApiBase
                     }
                     else
                     {
-                        var audioService = _serviceProvider.GetRequiredService<IAudioService>();
+                        var audioService =
+                            (ApiAudioServiceProvider)_apiFactory.GetApiCommon("AudioService").ApiProvider;
                         var res = await audioService.VoiceToText(q.Bytes, q.FileName);
                         if (res.resultType == ResultType.Answer)
                         {
@@ -195,7 +198,7 @@ public abstract class ApiBase
         {
             input.UserToken = _logRepository.GenerateTokenByFeishuUserId(input.External_UserId);
         }
-        
+
         if (dp?.CanProcessImage != true && input.ChatContexts.HasImage())
         {
             yield return Result.Error("当前模型不支持图片处理。");
@@ -222,13 +225,6 @@ public abstract class ApiBase
         
     }
     
-    /// <summary>
-    /// 虚方法，用来给子类继承，实现各个子类特有的开始新会话的处理，比如GPT Assistant在开启新会话的时候需要删除旧的ThreadId
-    /// </summary>
-    public virtual void StartNewContext(string ownerId)
-    {
-    }
-
     private void SaveChatResultContexts(ResultType resultType, string result, ApiChatInputIntern input)
     {
         if (input.IgnoreAutoContexts)
@@ -411,14 +407,7 @@ public abstract class ApiBase
     }
 
     //虚方法，留给子类覆盖
-    protected virtual async IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input)
-    {
-        var api = _serviceProvider.GetRequiredService<ApiOpenAIBase>();
-        await foreach (var res in api.ProcessChat(input))
-        {
-            yield return res;
-        }
-    }
+    protected abstract IAsyncEnumerable<Result> DoProcessChat(ApiChatInputIntern input);
 
     /// <summary>
     /// 文本非流式消息，如果子类不覆盖，默认使用GPT3.5来处理
@@ -472,12 +461,8 @@ public abstract class ApiBase
     }
     
     //虚方法，留给子类覆盖
-    protected virtual async Task<Result> DoProcessQuery(ApiChatInputIntern input)
-    {
-        var api = _serviceProvider.GetRequiredService<ApiOpenAIBase>();
-        return await api.ProcessQuery(input);
-    }
-
+    protected abstract Task<Result> DoProcessQuery(ApiChatInputIntern input);
+    
     public async Task<string> ReadFileTextContent(byte[] file, string fileName)
     {
         try
@@ -508,28 +493,4 @@ public abstract class ApiBase
         return string.Empty;
     }
     
-    /// <summary>
-    /// 文本向量化接口，虚方法，留给子类覆盖
-    /// 注意：不同的模型的向量化的输入长度和输出长度不同，务必使用同一个模型进行向量化索引和搜索
-    /// </summary>
-    /// <param name="qc">问题列表</param>
-    /// <param name="embedForQuery">向量的目的：true for文档索引，false for 查询</param>
-    /// <returns></returns>
-    public virtual async Task<(ResultType resultType, double[][]? result, string error)> ProcessEmbeddings(List<ChatContext.ChatContextContent> qc, bool embedForQuery =  false)
-    {
-        return (ResultType.Error, null, "该模型未实现向量化接口");
-    }
-    
-    /// <summary>
-    /// 虚方法，用来获取子类的额外配置项，用于画图类模型的样式和尺寸选择，以及思考模型的可控的思考深度等选项
-    /// </summary>
-    /// <param name="ext_userId"></param>
-    public virtual List<ExtraOption>? GetExtraOptions(string ext_userId)
-    {
-        return null;
-    }
-    
-    public virtual void SetExtraOptions(string ext_userId, string type, string value)
-    {
-    }
 }

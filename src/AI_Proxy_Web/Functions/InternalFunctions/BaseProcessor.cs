@@ -41,7 +41,7 @@ public class BaseProcessor
     protected virtual async IAsyncEnumerable<Result> DoProcessResult(FunctionCall func,
         ApiChatInputIntern input, ApiChatInputIntern callerInput, bool reEnter = false)
     {
-        var api = _apiFactory.GetService(input.ChatModel);
+        var api = _apiFactory.GetApiCommon(input.ChatModel);
         await foreach (var res in api.ProcessChat(input))
         {
             yield return res;
