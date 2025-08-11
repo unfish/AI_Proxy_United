@@ -841,6 +841,7 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
                 {
                     Type = "思考深度", Contents = new[]
                     {
+                        new KeyValuePair<string, string>("禁用", "disable"),
                         new KeyValuePair<string, string>("低", "low"),
                         new KeyValuePair<string, string>("中", "medium"),
                         new KeyValuePair<string, string>("高", "high")
@@ -1017,10 +1018,11 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
             }
         }
 
+        var effort = GetExtraOptions(input.External_UserId)[0].CurrentValue;
         return JsonConvert.SerializeObject(new
         {
             model,
-            reasoning = apiClassAttribute.UseThinkingMode?  new { summary = "auto", effort = GetExtraOptions(input.External_UserId)[0].CurrentValue } : null,
+            reasoning = apiClassAttribute.UseThinkingMode && effort != "disable" ?  new { summary = "auto", effort = effort } : null,
             input = msgs,
             tools,
             store = false,
