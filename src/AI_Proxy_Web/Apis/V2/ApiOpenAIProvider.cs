@@ -516,7 +516,6 @@ public class ApiOpenAIProvider : ApiProviderBase
         string funcArgs = "";
         List<FunctionCall> functionCalls = new List<FunctionCall>();
         bool reasoning = false;
-        bool answering = false;
         using (var stream = await resp.Content.ReadAsStreamAsync())
         using (StreamReader reader = new StreamReader(stream))
         {
@@ -530,6 +529,11 @@ public class ApiOpenAIProvider : ApiProviderBase
                 yield break;
             }
 
+            var processEvents = new HashSet<string>()
+            {
+                "response.output_item.added", "response.output_text.delta", "response.reasoning_summary_part.added",
+                "response.reasoning_summary_text.delta", "response.function_call_arguments.done", "error"
+            };
             while ((line = await reader.ReadLineAsync()) != null)
             {
                 //Console.WriteLine(line);
@@ -544,10 +548,7 @@ public class ApiOpenAIProvider : ApiProviderBase
                 else if (line.Length == 0 && !string.IsNullOrEmpty(lineEvent))
                 {
                     lineEvent = lineEvent.Substring("event: ".Length);
-                    if (lineEvent != "response.output_text.delta" &&
-                        lineEvent != "response.output_item.added" &&
-                        lineEvent != "response.function_call_arguments.done"&&
-                        lineEvent != "error")
+                    if (!processEvents.Contains(lineEvent))
                     {
                         continue;
                     }
@@ -558,41 +559,19 @@ public class ApiOpenAIProvider : ApiProviderBase
                     if (type == "response.output_text.delta")
                     {
                         var content = res["delta"].Value<string>();
+                        yield return Result.Answer(content);
+                    }
+                    else if (type == "response.reasoning_summary_text.delta")
+                    {
+                        reasoning = true;
+                        var content = res["delta"].Value<string>();
+                        yield return Result.Reasoning(content);
+                    }
+                    else if (type == "response.reasoning_summary_part.added")
+                    {
                         if (reasoning)
                         {
-                            if (content.IndexOf("</think>", StringComparison.Ordinal) >= 0)
-                            {
-                                reasoning = false;
-                                var reason = content.Substring(0,
-                                    content.IndexOf("</think>", StringComparison.Ordinal));
-                                yield return Result.Reasoning(reason);
-                                if (content.Length > reason.Length + "</think>".Length)
-                                {
-                                    var answer = content.Substring(reason.Length + "</think>".Length).Trim();
-                                    if (answer.Length > 0)
-                                        yield return Result.Answer(answer);
-                                }
-                            }
-                            else
-                            {
-                                yield return Result.Reasoning(content);
-                            }
-                        }
-                        else
-                        {
-                            if (!answering && content.IndexOf("<think>", StringComparison.Ordinal) >= 0 &&
-                                content.IndexOf("</think>", StringComparison.Ordinal) < 0)
-                            {
-                                reasoning = true;
-                                var reason = content.Substring(
-                                    content.IndexOf("<think>", StringComparison.Ordinal) + "</think>".Length);
-                                yield return Result.Reasoning(reason);
-                            }
-                            else
-                            {
-                                answering = true;
-                                yield return Result.Answer(content);
-                            }
+                            yield return Result.Reasoning("\n\n");
                         }
                     }
                     else if (type == "response.output_item.added")
@@ -818,11 +797,10 @@ public class OpenAIRestClient:IOpenAIRestClient
     
     public OpenAIRestClient(ConfigHelper configuration, IHttpClientFactory httpClientFactory)
     {
-        var proxy = configuration.GetConfig<string>("Service:OpenAI:Host");
-        var apikey = configuration.GetConfig<string>("Service:OpenAI:Key");
+        var proxy = configuration.GetConfig<string>("Providers:OpenAI:Host");
+        var apikey = configuration.GetConfig<string>("Providers:OpenAI:Key");
         _client = new RestClient(proxy);
         _client.AddDefaultHeader("Authorization", "Bearer " + apikey);
-        _client.AddDefaultParameter("OpenAI-Beta", "assistants=v2", ParameterType.HttpHeader);
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
     }
@@ -834,11 +812,10 @@ public class OpenAIRestClient:IOpenAIRestClient
     
     public HttpClient GetHttpClient()
     {
-        var proxy = _configuration.GetConfig<string>("Service:OpenAI:Host");
-        var apikey = _configuration.GetConfig<string>("Service:OpenAI:Key");
+        var proxy = _configuration.GetConfig<string>("Providers:OpenAI:Host");
+        var apikey = _configuration.GetConfig<string>("Providers:OpenAI:Key");
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Add("Authorization", "Bearer " + apikey);
-        client.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v2");
         client.BaseAddress = new Uri(proxy);
         client.Timeout = TimeSpan.FromSeconds(300);
         return client;
@@ -856,6 +833,21 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
     {
         base.Setup(attr);
         _chatUrl = _host + "responses";
+        if (attr.UseThinkingMode)
+        {
+            extraOptionsList = new List<ExtraOption>()
+            {
+                new ExtraOption()
+                {
+                    Type = "思考深度", Contents = new[]
+                    {
+                        new KeyValuePair<string, string>("低", "low"),
+                        new KeyValuePair<string, string>("中", "medium"),
+                        new KeyValuePair<string, string>("高", "high")
+                    }
+                }
+            };
+        }
     }
 
     /// <summary>
@@ -1028,6 +1020,7 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
         return JsonConvert.SerializeObject(new
         {
             model,
+            reasoning = apiClassAttribute.UseThinkingMode?  new { summary = "auto", effort = GetExtraOptions(input.External_UserId)[0].CurrentValue } : null,
             input = msgs,
             tools,
             store = false,
