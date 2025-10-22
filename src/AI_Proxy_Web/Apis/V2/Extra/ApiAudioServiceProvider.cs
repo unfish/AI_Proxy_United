@@ -27,20 +27,21 @@ public class ApiAudioServiceProvider : ApiProviderBase
             {
                 Type = "声音风格", Contents = new []
                 {
-                    new KeyValuePair<string, string>("女-成熟", "minimax_female-chengshu-jingpin"),
-                    new KeyValuePair<string, string>("女-甜美", "minimax_female-tianmei-jingpin"),
-                    new KeyValuePair<string, string>("女-新闻", "minimax_presenter_female"),
+                    new KeyValuePair<string, string>("女-豆包1", "doubao_zh_female_vv_uranus_bigtts"),
                     new KeyValuePair<string, string>("男-精英", "minimax_male-qn-jingying-jingpin"),
                     new KeyValuePair<string, string>("男-霸道", "minimax_male-qn-badao-jingpin"),
                     new KeyValuePair<string, string>("男-新闻", "minimax_presenter_male"),
+                    new KeyValuePair<string, string>("女-成熟", "minimax_female-chengshu-jingpin"),
+                    new KeyValuePair<string, string>("女-甜美", "minimax_female-tianmei-jingpin"),
+                    new KeyValuePair<string, string>("女-新闻", "minimax_presenter_female"),
+                    new KeyValuePair<string, string>("男-智华", "tencent_101010"),
+                    new KeyValuePair<string, string>("男-智辉", "tencent_101013"),
+                    new KeyValuePair<string, string>("男-智皓", "tencent_101024"),
+                    new KeyValuePair<string, string>("男-智靖", "tencent_101018"),
                     new KeyValuePair<string, string>("女-智聆", "tencent_101002"),
                     new KeyValuePair<string, string>("女-智美", "tencent_101003"),
                     new KeyValuePair<string, string>("女-智芸", "tencent_101009"),
                     new KeyValuePair<string, string>("女-智丹", "tencent_101012"),
-                    new KeyValuePair<string, string>("男-智华", "tencent_101010"),
-                    new KeyValuePair<string, string>("男-智辉", "tencent_101013"),
-                    new KeyValuePair<string, string>("男-智皓", "tencent_101024"),
-                    new KeyValuePair<string, string>("男-智靖", "tencent_101018")
                 }
             }
         };
@@ -106,7 +107,7 @@ public class ApiAudioServiceProvider : ApiProviderBase
             }
             default:
             {
-                var tencent = serviceProvider.GetRequiredService<ApiTencentProvider>();
+                var tencent = (ApiTencentProvider)_apiFactory.GetApiCommon("TencentHunYuan").ApiProvider;
                 return await tencent.VoiceToText(bytes, fileName);
             }
         }

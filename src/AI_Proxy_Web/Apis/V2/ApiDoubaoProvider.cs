@@ -33,6 +33,23 @@ public class ApiDoubaoProvider : ApiOpenAIProvider
         }
         ttsAppId = configHelper.GetProviderConfig<string>(attr.Provider, "TtsAppId");
         ttsToken = configHelper.GetProviderConfig<string>(attr.Provider, "TtsToken");
+        
+        if (attr.UseThinkingMode)
+        {
+            extraOptionsList = new List<ExtraOption>()
+            {
+                new ExtraOption()
+                {
+                    Type = "思考深度", Contents = new[]
+                    {
+                        new KeyValuePair<string, string>("极简", "minimal"),
+                        new KeyValuePair<string, string>("低", "low"),
+                        new KeyValuePair<string, string>("中", "medium"),
+                        new KeyValuePair<string, string>("高", "high")
+                    }
+                }
+            };
+        }
     }
 
     private string GetEmbeddingsMsgBody(List<ChatContext.ChatContextContent> qc, bool embedForQuery =  false)
@@ -164,7 +181,7 @@ public class ApiDoubaoProvider : ApiOpenAIProvider
                 if (sb.Length + s.Length >= 600)
                 {
                     input.ChatContexts.Contexts.Last().QC.Last().Content = sb.ToString();
-                    await foreach (var resp in DoTextToVoiceStream(input))
+                    await foreach (var resp in DoTextToVoiceStreamV2(input))
                     {
                         yield return resp;
                     }
@@ -177,13 +194,73 @@ public class ApiDoubaoProvider : ApiOpenAIProvider
         if (sb.Length > 0)
         {
             input.ChatContexts.Contexts.Last().QC.Last().Content = sb.ToString();
-            await foreach (var resp in DoTextToVoiceStream(input))
+            await foreach (var resp in DoTextToVoiceStreamV2(input))
             {
                 yield return resp;
             }
         }
     }
 
+    private async IAsyncEnumerable<Result> DoTextToVoiceStreamV2(ApiChatInputIntern input)
+    {
+        var _client = _httpClientFactory.CreateClient();
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-App-Id", ttsAppId);
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Access-Key", ttsToken);
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Resource-Id", "seed-tts-2.0");
+        var voice = "zh_female_vv_uranus_bigtts";
+        if (!string.IsNullOrEmpty(input.AudioVoice) && input.AudioVoice.StartsWith("doubao_"))
+            voice = input.AudioVoice.Replace("doubao_", "");
+        var msg = JsonConvert.SerializeObject(new
+        {
+            user = new { uid = input.External_UserId },
+            req_params = new
+            {
+                text = input.ChatContexts.Contexts.Last().QC.Last().Content,
+                speaker = voice,
+                audio_params = new
+                {
+                    format = input.AudioFormat,
+                    sample_rate = 24000
+                }
+            }
+        });
+        var resp = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "https://openspeech.bytedance.com/api/v3/tts/unidirectional")
+        {
+            Content = new StringContent(msg, Encoding.UTF8, "application/json")
+        }, HttpCompletionOption.ResponseHeadersRead);
+        using (var stream = await resp.Content.ReadAsStreamAsync())
+        using (StreamReader reader = new StreamReader(stream))
+        {
+            string line;
+            if (resp.StatusCode != HttpStatusCode.OK)
+            {
+                line = await reader.ReadToEndAsync();
+                yield return Result.Error(line);
+                yield break;
+            }
+
+            var index = 0;
+            while ((line = await reader.ReadLineAsync()) != null)
+            {
+                if (line.StartsWith("data:"))
+                    line = line.Substring("data:".Length);
+                if (!string.IsNullOrEmpty(line))
+                {
+                    var o = JObject.Parse(line);
+                    if (o["data"] != null && o["code"].Value<int>() == 0)
+                    {
+                        var audio = o["data"].Value<string>();
+                        if (!string.IsNullOrEmpty(audio))
+                        {
+                            var bytes = Convert.FromBase64String(audio);
+                            if (bytes.Length > 0)
+                                yield return FileResult.Answer(bytes, input.AudioFormat, ResultType.AudioBytes);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     private async IAsyncEnumerable<Result> DoTextToVoiceStream(ApiChatInputIntern input)
     {

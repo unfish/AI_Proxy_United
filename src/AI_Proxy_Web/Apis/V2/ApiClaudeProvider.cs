@@ -155,6 +155,9 @@ public class ApiClaudeProvider : ApiProviderBase
                 display_height_px = input.DisplayHeight ?? 768,
                 display_number = 1
             });
+        }
+        if (_extraTools.Contains("browser"))
+        {
             tools.Add(new{name="OpenUrl", description="Use the current web browser to open an URL.", input_schema=new
             {
                 type="object", required=new[]{"url"}, properties = new
@@ -171,10 +174,9 @@ public class ApiClaudeProvider : ApiProviderBase
                 type="object", properties = new {}
             }});
         }
-
         if (_extraTools.Contains("text_editor"))
         {
-            tools.Add(new { type = "text_editor_20250429", name = "str_replace_based_edit_tool" });
+            tools.Add(new { type = "text_editor_20250728", name = "str_replace_based_edit_tool" });
             tools.Add(new{name="SendFile", description="Send file to user.", input_schema=new
             {
                 type="object", required=new[]{"path"}, properties = new

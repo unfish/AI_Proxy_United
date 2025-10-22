@@ -47,6 +47,8 @@ public class ApiOpenAIProvider : ApiProviderBase
         if (input.AgentSystem == "web")
             tools = GetWebControlTools();
         var msgs = GetFullMessages(input.ChatContexts);
+        var opt = GetExtraOptions(input.External_UserId);
+        var effort = _useThinkingMode && opt is { Count: > 0 } ? opt[0].CurrentValue : null;
         return JsonConvert.SerializeObject(new
         {
             model = model,
@@ -55,7 +57,8 @@ public class ApiOpenAIProvider : ApiProviderBase
             temperature = _useThinkingMode ? 1 : input.Temprature,
             max_completion_tokens = _maxTokens,
             user = input.External_UserId,
-            stream
+            stream,
+            reasoning_effort = effort
         }, jSetting);
     }
 
@@ -532,7 +535,7 @@ public class ApiOpenAIProvider : ApiProviderBase
             var processEvents = new HashSet<string>()
             {
                 "response.output_item.added", "response.output_text.delta", "response.reasoning_summary_part.added",
-                "response.reasoning_summary_text.delta", "response.function_call_arguments.done", "error"
+                "response.reasoning_summary_text.delta", "response.function_call_arguments.done", "response.image_generation_call.partial_image", "error"
             };
             while ((line = await reader.ReadLineAsync()) != null)
             {
@@ -590,7 +593,15 @@ public class ApiOpenAIProvider : ApiProviderBase
                         funcArgs = res["arguments"].Value<string>();
                         functionCalls.Add(new FunctionCall()
                             { Id = funcId, ItemId = itemId, Name = funcName, Arguments = funcArgs });
-                    }else if (type == "error")
+                    }else if (type == "response.image_generation_call.partial_image")
+                    {
+                        itemId = res["item_id"].Value<string>();
+                        functionCalls.Add(new FunctionCall()
+                            { Id = itemId, ItemId = itemId, Name = "image_generation_call", Arguments = "{}" });
+                        var image = res["partial_image_b64"].Value<string>();
+                        yield return FileResult.Answer(Convert.FromBase64String(image), "png", ResultType.ImageBytes);
+                    }
+                    else if (type == "error")
                     {
                         yield return Result.Error(res["error"]["message"].Value<string>());
                     }
@@ -874,6 +885,10 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
     
     public override async Task<Result> SendMessage(ApiChatInputIntern input)
     {
+        if (_extraTools == "image_generation")
+        {
+            return Result.Error("画图接口不支持Query调用");
+        }
         HttpClient client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(300);
         client.DefaultRequestHeaders.Add("Authorization","Bearer "+_key);
@@ -926,6 +941,10 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
                     environment = "browser", // other possible values: "mac", "windows", "ubuntu"
                 });
             }
+            else if (_extraTools == "image_generation")
+            {
+                funcs.Add(new { type = _extraTools, partial_images = 0 });
+            }
             else
             {
                 funcs.Add(new { type = _extraTools });
@@ -948,9 +967,9 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
                 content = new[] { new { type = "input_text", text = input.ChatContexts.SystemPrompt } }
             });
         }
+        var contents = new List<object>();
         foreach (var ctx in input.ChatContexts.Contexts)
         {
-            var contents = new List<object>();
             foreach (var qc in ctx.QC)
             {
                 if (qc.Type == ChatType.图片Base64)
@@ -985,8 +1004,12 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
                     contents.Add(new { type = "input_text", text = qc.Content });
                 }
             }
+
             if (contents.Count > 0)
+            {
                 msgs.Add(new ResponseApiInput() { role = "user", content = contents.ToArray() });
+                contents.Clear();
+            }
             
             foreach (var ac in ctx.AC)
             {
@@ -1002,27 +1025,39 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
                     var acalls = JsonConvert.DeserializeObject<List<FunctionCall>>(ac.Content);
                     foreach (var t in acalls)
                     {
-                        msgs.Add(new
+                        if (t.Name == "image_generation_call") //清除历史对话内容，并将上一张图片的id添加到本次用户输入中
                         {
-                            type = "function_call", id = t.ItemId, call_id = t.Id, name = t.Name, arguments = t.Arguments
-                        });
+                            msgs.Clear();
+                            contents.Add(new { type = "image_generation_call", id = t.ItemId });
+                        }
+                        else
+                        {
+                            msgs.Add(new
+                            {
+                                type = "function_call", id = t.ItemId, call_id = t.Id, name = t.Name,
+                                arguments = t.Arguments
+                            });
+                        }
                     }
                     foreach (var t in acalls)
                     {
-                        msgs.Add(new
+                        if (t.Name != "image_generation_call")
                         {
-                            type = "function_call_output",call_id = t.Id, output = t.ResultStr
-                        });
+                            msgs.Add(new
+                            {
+                                type = "function_call_output", call_id = t.Id, output = t.ResultStr
+                            });
+                        }
                     }
                 }
             }
         }
 
-        var effort = GetExtraOptions(input.External_UserId)[0].CurrentValue;
+        var effort = apiClassAttribute.UseThinkingMode ? GetExtraOptions(input.External_UserId)[0].CurrentValue : "disable";
         return JsonConvert.SerializeObject(new
         {
             model,
-            reasoning = apiClassAttribute.UseThinkingMode && effort != "disable" ?  new { summary = "auto", effort = effort } : null,
+            reasoning = effort != "disable" ?  new { summary = "auto", effort = effort } : null,
             input = msgs,
             tools,
             store = false,

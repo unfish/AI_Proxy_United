@@ -342,3 +342,4 @@ healthchecksdb
 
 config.json
 config.Development.json
+.DS_Store

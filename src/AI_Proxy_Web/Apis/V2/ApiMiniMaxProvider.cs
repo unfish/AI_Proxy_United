@@ -34,7 +34,7 @@ public class ApiMiniMaxProvider : ApiOpenAIProvider
         var formats = new[] { "mp3", "wav", "pcm", "flac" };
         return JsonConvert.SerializeObject(new
         {
-            model = "speech-02-hd",
+            model = "speech-2.5-hd-preview",
             text = text,
             voice_setting = new
             {

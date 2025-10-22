@@ -26,7 +26,8 @@ public class ApiDoubaoImageProvider : ApiProviderBase
     public override void Setup(ApiClassAttribute attr)
     {
         base.Setup(attr);
-        accessKey = configHelper.GetProviderConfig<string>(attr.Provider, "AccessKey");
+        _chatUrl = _host + "images/generations";
+        accessKey = configHelper.GetProviderConfig<string>(attr.Provider, "AccessKey"); //OCR用的
         secretKey = configHelper.GetProviderConfig<string>(attr.Provider, "SecretKey");
         extraOptionsList = new List<ExtraOption>()
         {
@@ -34,13 +35,128 @@ public class ApiDoubaoImageProvider : ApiProviderBase
             {
                 Type = "尺寸", Contents = new []
                 {
-                    new KeyValuePair<string, string>("方形", "1536:1536"),
-                    new KeyValuePair<string, string>("横屏", "1584:1056"),
-                    new KeyValuePair<string, string>("竖屏", "1056:1584")
+                    new KeyValuePair<string, string>("自动", "2K"),
+                    new KeyValuePair<string, string>("方形", "2048x2048"),
+                    new KeyValuePair<string, string>("横屏", "2304x1728"),
+                    new KeyValuePair<string, string>("竖屏", "1728x2304"),
+                    new KeyValuePair<string, string>("超高清", "4K")
                 }
             }
         };
     }
+    
+    /// <summary>
+    /// 要增加上下文功能通过input里面的history数组变量，数组中每条记录是user和bot的问答对
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    public string GetMsgBody(ApiChatInputIntern input)
+    {
+        var op = GetExtraOptions(input.External_UserId)[0].CurrentValue;
+        var qc = input.ChatContexts.Contexts.Last().QC;
+        var prompt = qc.LastOrDefault(t => t.Type == ChatType.文本)?.Content ?? "";
+        var images = qc.Any(t => t.Type == ChatType.图片Base64)
+            ? qc.Where(t => t.Type == ChatType.图片Base64).Select(t =>
+                $"data:{(string.IsNullOrEmpty(t.MimeType) ? "image/jpeg" : t.MimeType)};base64," + t.Content).ToArray()
+            : null;
+        
+        var jSetting = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
+        return JsonConvert.SerializeObject(new
+        {
+            model = _modelName,
+            prompt = input.ChatContexts.Contexts.Last().QC.Last().Content,
+            size = op,
+            stream = true,
+            respnose_format = "url",
+            watermark = false,
+            image = images
+        }, jSetting);
+    }
+    
+    /// <summary>
+    /// 普通请求接口
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    public override async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
+    {       
+        HttpClient client = _httpClientFactory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(300);
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer " + _key);
+        var url = _chatUrl;
+        var msg = GetMsgBody(input);
+        var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(msg, Encoding.UTF8, "application/json")
+        }, HttpCompletionOption.ResponseHeadersRead);
+
+        await foreach (var resp in ProcessStreamResponse(response))
+            yield return resp;
+    }
+
+    public override async Task<Result> SendMessage(ApiChatInputIntern input)
+    {
+        return Result.Error("画图接口不支持Query调用");
+    }
+    
+    public async IAsyncEnumerable<Result> ProcessStreamResponse(HttpResponseMessage resp)
+    {
+        using (var stream = await resp.Content.ReadAsStreamAsync())
+        using (StreamReader reader = new StreamReader(stream))
+        {
+            string line;
+            if (resp.StatusCode != HttpStatusCode.OK)
+            {
+                line = await reader.ReadToEndAsync();
+                yield return Result.Error(resp.StatusCode + " : " + line);
+                yield break;
+            }
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Add("Authorization", "Bearer " + _key);
+            while ((line = await reader.ReadLineAsync()) != null)
+            {
+                Console.WriteLine(line);
+                if (line.StartsWith("event:"))
+                    continue;
+                if (line.StartsWith("data:"))
+                    line = line.Substring("data:".Length);
+                line = line.TrimStart();
+
+                if (line == "[DONE]")
+                {
+                    break;
+                }
+                else if (line.StartsWith(":")) //通常用于返回注释
+                {
+                }
+                else if (!string.IsNullOrWhiteSpace(line))
+                {
+                    var res = JObject.Parse(line);
+                    if (res["type"] != null)
+                    {
+                        string type = res["type"].Value<string>();
+                        if (type == "image_generation.partial_succeeded")
+                        {
+                            var image_url =  res["url"].Value<string>();
+                            var bytes = await client.GetByteArrayAsync(image_url);
+                            yield return FileResult.Answer(bytes, "jpg",
+                                ResultType.ImageBytes);
+                        }else if (type == "image_generation.partial_failed")
+                        {
+                            yield return Result.Error(line);
+                        }
+                    }
+                    else
+                    {
+                        yield return Result.Error(line);
+                    }
+                }
+            }
+        }
+    }
+
+    
     
     
     #region Get Token
@@ -178,102 +294,6 @@ public class ApiDoubaoImageProvider : ApiProviderBase
 
     #endregion
     
-    
-    /// <summary>
-    /// 要增加上下文功能通过input里面的history数组变量，数组中每条记录是user和bot的问答对
-    /// </summary>
-    /// <param name="input"></param>
-    /// <returns></returns>
-    public string GetMsgBody(ApiChatInputIntern input)
-    {
-        var op = GetExtraOptions(input.External_UserId)[0].CurrentValue.Split(":");
-        return JsonConvert.SerializeObject(new
-        {
-            req_key = _modelName,
-            prompt = input.ChatContexts.Contexts.Last().QC.Last().Content,
-            width = int.Parse(op[0]),
-            height = int.Parse(op[1]),
-            use_pre_llm = true
-        });
-    }
-    
-    /// <summary>
-    /// 普通请求接口
-    /// </summary>
-    /// <param name="input"></param>
-    /// <returns></returns>
-    public override async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
-    {
-        DateTime dateTimeSign = DateTime.UtcNow;
-        NowDate = dateTimeSign.ToString("yyyyMMdd");
-        NowTime = dateTimeSign.ToString("HHmmss");
-        dateTimeSignStr = NowDate + "T" + NowTime + "Z";
-
-        var msg = GetMsgBody(input);
-        var query = "Action=CVProcess&Version=2022-08-31";
-        var url = _host + "?" + query;
-        byte[] byteArray = Encoding.UTF8.GetBytes(msg);
-        string bodyHash = ComputeHash256(msg, new SHA256CryptoServiceProvider());
-
-        HttpWebRequest request = WebRequest.Create(url) as HttpWebRequest;
-        request.Method = "POST";
-        request.ContentType = "application/json";
-        request.ContentLength = byteArray.Length;
-        request.Accept = "application/json";
-
-        request.Host = Host;
-        request.Headers.Add("X-Date", dateTimeSignStr);
-        request.Headers.Add("X-Content-Sha256", bodyHash);
-        var authHeader = GetSignedHeader(dateTimeSignStr, bodyHash, request.Headers, query);
-        request.Headers.Add("Authorization", authHeader);
-
-        request.KeepAlive = false;
-        using (Stream reqStream = request.GetRequestStream())
-        {
-            reqStream.Write(byteArray, 0, byteArray.Length);
-        }
-
-        string respondStr;
-        bool isError = false;
-        try
-        {
-            using HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse();
-            using StreamReader sr = new StreamReader(webResponse.GetResponseStream(), Encoding.UTF8);
-            respondStr = sr.ReadToEnd();
-        }
-        catch (Exception ex)
-        {
-            respondStr = ex.Message;
-            isError = true;
-        }
-
-        if (isError)
-        {
-            yield return Result.Error(respondStr);
-        }
-        else
-        {
-            var o = JObject.Parse(respondStr);
-            if (o["status"].Value<int>() == 10000)
-            {
-                var pe = o["data"]["pe_result"].Value<string>();
-                yield return Result.Answer(pe);
-                var b64 = o["data"]["binary_data_base64"][0].Value<string>();
-                yield return FileResult.Answer(Convert.FromBase64String(b64), "png", ResultType.ImageBytes);
-            }
-            else
-            {
-                yield return Result.Error(respondStr);
-            }
-        }
-    }
-
-    public override async Task<Result> SendMessage(ApiChatInputIntern input)
-    {
-        return Result.Error("画图接口不支持Query调用");
-    }
-    
-    
     /// <summary>
     /// 表格识别
     /// 文档地址 https://www.volcengine.com/docs/6790/117778
@@ -286,11 +306,12 @@ public class ApiDoubaoImageProvider : ApiProviderBase
         NowDate = dateTimeSign.ToString("yyyyMMdd");
         NowTime = dateTimeSign.ToString("hhmmss");
         dateTimeSignStr = NowDate + "T" + NowTime + "Z";
+        var host = "https://visual.volcengineapi.com";
 
         var imageBase64 = Convert.ToBase64String(bytes);
         var msg = "image_base64=" + HttpUtility.UrlEncode(imageBase64);
         var query = "Action=OCRTable&Version=2021-08-23";
-        var url = _host + "?" + query;
+        var url = host + "?" + query;
         byte[] byteArray = Encoding.UTF8.GetBytes(msg);
         string bodyHash = ComputeHash256(msg, new SHA256CryptoServiceProvider());
 
@@ -300,7 +321,7 @@ public class ApiDoubaoImageProvider : ApiProviderBase
         request.ContentLength = byteArray.Length;
         request.Accept = "application/json";
 
-        request.Host = _host;
+        request.Host = host;
         request.Headers.Add("X-Date", dateTimeSignStr);
         request.Headers.Add("X-Content-Sha256", bodyHash);
         var authHeader = GetSignedHeader(dateTimeSignStr, bodyHash, request.Headers, query);

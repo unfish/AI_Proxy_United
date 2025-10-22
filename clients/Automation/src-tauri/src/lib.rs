@@ -130,6 +130,8 @@ fn mouse_click(
         enigo
             .move_mouse(monitor.x() + x, monitor.y() + y, Coordinate::Abs)
             .map_err(|e| e.to_string())?;
+        let ten_millis = time::Duration::from_millis(500);
+        thread::sleep(ten_millis);
     }
 
     println!("-- Click: {:?}", button);
@@ -218,7 +220,7 @@ fn mouse_drag(monitor_id: String, x: Option<i32>, y: Option<i32>) -> Result<(), 
 
 #[tauri::command]
 fn mouse_scroll(
-    monitor_id: String,
+    _monitor_id: String,
     amount: Option<i32>,
     direction: String,
 ) -> Result<(), String> {
