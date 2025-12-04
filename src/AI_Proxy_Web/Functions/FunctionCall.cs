@@ -37,6 +37,9 @@ public class FunctionCall
     [JsonProperty("arguments")]
     public string Arguments { get; set; }
     
+    [JsonProperty("thoughtSignature")]
+    public string ThoughtSignature { get; set; }
+    
     [JsonProperty("resultStr")]
     public string ResultStr { get; set; }
     

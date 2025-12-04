@@ -38,6 +38,7 @@ public enum ResultType
     MultiMediaResult, //图文混排结果集
     FollowUp, //消息结束后发送可自动提问的气泡消息
     LogSaved, //本次聊天日志已保存，返回日志ID和SessionId，可以用来获取该条日志
+    ThoughtSignature, //思维链签名，Gemini专用
 }
 
 public class Result
@@ -92,9 +93,10 @@ public class FileResult : Result
     public string fileExt { get; set; }
     public string fileName { get; set; }
     public int duration { get; set; }//音频时长
-    public static FileResult Answer(byte[] bytes, string ext, ResultType type = ResultType.FileBytes, string fileName = "", int duration = 0)
+    public string thoughtSignature { get; set; }//Google思考签名
+    public static FileResult Answer(byte[] bytes, string ext, ResultType type = ResultType.FileBytes, string fileName = "", int duration = 0,  string thoughtSignature = "")
     {
-        return new FileResult() {resultType = type, result = bytes, fileExt = ext, fileName = fileName, duration = duration};
+        return new FileResult() {resultType = type, result = bytes, fileExt = ext, fileName = fileName, duration = duration,  thoughtSignature = thoughtSignature};
     }
 
     public override string ToString()

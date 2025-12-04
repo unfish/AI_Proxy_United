@@ -35,6 +35,30 @@ public class ApiGoogleProvider : ApiProviderBase
         {
             useSystem = false;
             useFunctions = false;
+            extraOptionsList = new List<ExtraOption>()
+            {
+                new ExtraOption()
+                {
+                    Type = "尺寸", Contents = new[]
+                    {
+                        new KeyValuePair<string, string>("自动", "AUTO"),
+                        new KeyValuePair<string, string>("方形", "1:1"),
+                        new KeyValuePair<string, string>("横屏", "4:3"),
+                        new KeyValuePair<string, string>("竖屏", "3:4"),
+                        new KeyValuePair<string, string>("宽横屏", "16:9"),
+                        new KeyValuePair<string, string>("长竖屏", "9:16")
+                    }
+                },
+                new ExtraOption()
+                {
+                    Type = "质量", Contents = new[]
+                    {
+                        new KeyValuePair<string, string>("普通", "1K"),
+                        new KeyValuePair<string, string>("2K", "2K"),
+                        new KeyValuePair<string, string>("4K", "4K")
+                    }
+                }
+            };
         }
     }
     
@@ -129,6 +153,7 @@ public class ApiGoogleProvider : ApiProviderBase
                 {
                     contents.Clear();
                     var results = JArray.Parse(ac.Content);
+                    var rIndex = 0;
                     foreach (var tk in results)
                     {
                         if (tk["resultType"].Value<int>() == (int)ResultType.ImageBytes)
@@ -140,14 +165,27 @@ public class ApiGoogleProvider : ApiProviderBase
                                 {
                                     inline_data = new
                                     {
-                                        mime_type =  "image/png", data = tk["result"].Value<string>()
-                                    }
+                                        mime_type = "image/png", data = tk["result"].Value<string>()
+                                    },
+                                    thoughtSignature = tk["thoughtSignature"] != null &&
+                                                       !string.IsNullOrEmpty(tk["thoughtSignature"].Value<string>())
+                                        ? tk["thoughtSignature"].Value<string>()
+                                        : null
                                 });
                             }
-                        }else if (tk["resultType"].Value<int>() == (int)ResultType.Answer)
-                        {
-                            contents.Add(new { text = tk["result"].Value<string>()});
                         }
+                        else if (tk["resultType"].Value<int>() == (int)ResultType.Answer)
+                        {
+                            contents.Add(new
+                            {
+                                text = tk["result"].Value<string>(),
+                                thoughtSignature = results.Count>rIndex+1 && results[rIndex+1]["resultType"].Value<int>()==(int)ResultType.ThoughtSignature
+                                    ? results[rIndex+1]["result"].Value<string>()
+                                    : null
+                            });
+                        }
+
+                        rIndex++;
                     }
                     msgs.Add(new Message() { role = "model", parts = contents.ToArray() });
                 }
@@ -162,7 +200,8 @@ public class ApiGoogleProvider : ApiProviderBase
                             functionCall = new
                             {
                                 name = call.Name, args = JObject.Parse(call.Arguments)
-                            }
+                            },
+                            thoughtSignature = string.IsNullOrEmpty(call.ThoughtSignature)?null:call.ThoughtSignature
                         });
                     }
                     msgs.Add(new Message() { role = "model", parts = contents.ToArray() });
@@ -197,19 +236,42 @@ public class ApiGoogleProvider : ApiProviderBase
             };
             
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
-        return JsonConvert.SerializeObject(new
+        var thinking = _useThinkingMode ? new { include_thoughts = true } : null;
+        if (canGenImage)
         {
-            contents = msgs,
-            tools = useFunctions && string.IsNullOrEmpty(input.CachedContentId) ? tools : null, //使用缓存的时候不能使用tools和系统提示，如果需要的话，tools也要放到缓存里去, 002版本暂不支持
-            systemInstruction = useSystem && string.IsNullOrEmpty(input.CachedContentId) ? sys : null,
-            cachedContent = input.CachedContentId,
-            generationConfig = new
+            var opt = GetExtraOptions(input.External_UserId);
+            return JsonConvert.SerializeObject(new
             {
-                temperature = input.Temprature,
-                maxOutputTokens = _maxTokens,
-                response_modalities = canGenImage? new[] { "Text", "Image" } : null,
-            }
-        }, jSetting);
+                contents = msgs,
+                tools = new object[]
+                {
+                    new { google_search = new { } }
+                },
+                generationConfig = new
+                {
+                    responseModalities = new[] { "TEXT", "IMAGE" },
+                    imageConfig = new
+                    {
+                        aspectRatio = opt[0].CurrentValue == "AUTO" ? null : opt[0].CurrentValue,
+                        imageSize = opt[1].CurrentValue
+                    }
+                }
+            }, jSetting);
+        }
+        else
+            return JsonConvert.SerializeObject(new
+            {
+                contents = msgs,
+                tools = useFunctions && string.IsNullOrEmpty(input.CachedContentId) ? tools : null, //使用缓存的时候不能使用tools和系统提示，如果需要的话，tools也要放到缓存里去, 002版本暂不支持
+                systemInstruction = useSystem && string.IsNullOrEmpty(input.CachedContentId) ? sys : null,
+                cachedContent = input.CachedContentId,
+                generationConfig = new
+                {
+                    temperature = input.Temprature,
+                    maxOutputTokens = _maxTokens,
+                    thinkingConfig = thinking
+                }
+            }, jSetting);
     }
     
     /// <summary>
@@ -220,6 +282,7 @@ public class ApiGoogleProvider : ApiProviderBase
     public override async IAsyncEnumerable<Result> SendMessageStream(ApiChatInputIntern input)
     {
         HttpClient client = _httpClientFactory.CreateClient();
+        client.Timeout = TimeSpan.FromMinutes(5);
         var msg = GetMsgBody(input);
         var url = _chatUrl + _modelName + ":streamGenerateContent?alt=sse&key=" + _key;
         var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
@@ -234,7 +297,7 @@ public class ApiGoogleProvider : ApiProviderBase
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 line = await reader.ReadToEndAsync();
-                //Console.WriteLine(line);
+                Console.WriteLine(line);
                 yield return Result.Error(line);
                 yield break;
             }
@@ -242,6 +305,7 @@ public class ApiGoogleProvider : ApiProviderBase
             List<FunctionCall> functionCalls = new List<FunctionCall>();
             List<Result> results = new List<Result>();
             var sb = new StringBuilder();
+            var textThoughtSignature = "";
             var hasImage = false;
             while ((line = await reader.ReadLineAsync()) != null)
             {
@@ -267,35 +331,62 @@ public class ApiGoogleProvider : ApiProviderBase
                     if (o["candidates"] != null && o["candidates"][0]["content"]!=null && o["candidates"][0]["content"]["parts"]!=null)
                     {
                         var arr = o["candidates"][0]["content"]["parts"] as JArray;
-                        bool textSent = false; //同一次返回的数组里面包含两个text段的时候，说明前面一个是thinking过程，后面一个是正式回答，中间加两个回车
                         foreach (var tk in arr)
                         {
                             if (tk["text"] != null)
                             {
-                                if (textSent)
+                                if (tk["text"].Value<string>().Length > 0)
                                 {
-                                    yield return Result.New(ResultType.AnswerFinished);
-                                    results.Add(Result.Answer(sb.ToString()));
-                                    sb.Clear();
+                                    if (tk["thought"] != null && tk["thought"].Value<bool>())
+                                    {
+                                        yield return Result.Reasoning(tk["text"].Value<string>());
+                                    }
+                                    else
+                                    {
+                                        yield return Result.Answer(tk["text"].Value<string>());
+                                        sb.Append(tk["text"].Value<string>());
+                                    }
                                 }
-                                yield return Result.Answer(tk["text"].Value<string>());
-                                sb.Append(tk["text"].Value<string>());
-                                textSent = true;
+
+                                if (tk["thoughtSignature"] != null)
+                                {
+                                    textThoughtSignature = tk["thoughtSignature"].ToString();
+                                    yield return Result.New(ResultType.ThoughtSignature, textThoughtSignature);
+                                }
                             }else if (tk["functionCall"] != null)
                             {
-                                functionCalls.Add(new FunctionCall(){Name = tk["functionCall"]["name"].Value<string>(), Arguments = tk["functionCall"]["args"].ToString()});
-                            }else if (tk["inlineData"] != null)
+                                var call = new FunctionCall()
+                                {
+                                    Name = tk["functionCall"]["name"].Value<string>(),
+                                    Arguments = tk["functionCall"]["args"].ToString()
+                                };
+                                if (tk["thoughtSignature"] != null)
+                                {
+                                    call.ThoughtSignature = tk["thoughtSignature"].ToString();
+                                }
+                                functionCalls.Add(call);
+                            }
+                            else if (tk["inlineData"] != null)
                             {
                                 if (sb.Length > 0)
                                 {
                                     yield return Result.New(ResultType.AnswerFinished);
                                     results.Add(Result.Answer(sb.ToString()));
                                     sb.Clear();
+                                    if (!string.IsNullOrEmpty(textThoughtSignature))
+                                    {
+                                        results.Add(Result.New(ResultType.ThoughtSignature, textThoughtSignature));
+                                        textThoughtSignature = "";
+                                    }
                                 }
                                 var mimeType =  tk["inlineData"]["mimeType"].Value<string>();
                                 if (mimeType.Contains("image"))
                                 {
                                     var fr = FileResult.Answer(Convert.FromBase64String(tk["inlineData"]["data"].Value<string>()), "png", ResultType.ImageBytes);
+                                    if (tk["thoughtSignature"] != null)
+                                    {
+                                        fr.thoughtSignature = tk["thoughtSignature"].ToString();
+                                    }
                                     yield return fr;
                                     results.Add(fr);
                                     hasImage = true;
@@ -313,9 +404,12 @@ public class ApiGoogleProvider : ApiProviderBase
             if (sb.Length > 0)
             {
                 results.Add(Result.Answer(sb.ToString()));
+                if (!string.IsNullOrEmpty(textThoughtSignature))
+                {
+                    results.Add(Result.New(ResultType.ThoughtSignature, textThoughtSignature));
+                }
             }
-
-            if (hasImage || results.Count > 1)
+            if (hasImage || results.Count > 1) //如果结果类型>1种，返回MultiMediaResult，否则由Base里的Answer和Reason处理逻辑自己来处理
             {
                 yield return MultiMediaResult.Answer(results);
             }
@@ -351,25 +445,54 @@ public class ApiGoogleProvider : ApiProviderBase
 
         if (json["candidates"] != null)
         {
-            var parts = json["candidates"][0]["content"]["parts"][0];
-            if (parts["text"] != null)
+            var arr = json["candidates"][0]["content"]["parts"] as JArray;
+            var results = new List<Result>();
+            foreach (var tk in arr)
             {
-                return Result.Answer(parts["text"].Value<string>());
-            }
-            else if (parts["functionCall"] != null)
-            {
-                return FunctionsResult.Answer(new List<FunctionCall>()
+                if (tk["text"] != null)
                 {
-                    new FunctionCall() {Name = parts["functionCall"]["name"].Value<string>(), Arguments = parts["functionCall"]["args"].ToString()}
-                });
+                    results.Add(Result.Answer(tk["text"].Value<string>()));
+                    if (tk["thoughtSignature"] != null)
+                    {
+                        results.Add(Result.New(ResultType.ThoughtSignature, tk["thoughtSignature"].Value<string>()));
+                    }
+                }
+
+                if (tk["functionCall"] != null)
+                {
+                    var call = new FunctionCall()
+                    {
+                        Name = tk["functionCall"]["name"].Value<string>(),
+                        Arguments = tk["functionCall"]["args"].ToString()
+                    };
+                    if (tk["thoughtSignature"] != null)
+                    {
+                        call.ThoughtSignature = tk["thoughtSignature"].ToString();
+                    }
+
+                    results.Add(FunctionsResult.Answer(new List<FunctionCall>() { call }));
+                }
+
+                if (tk["inlineData"] != null)
+                {
+                    var mimeType =  tk["inlineData"]["mimeType"].Value<string>();
+                    if (mimeType.Contains("image"))
+                    {
+                        var fr = FileResult.Answer(Convert.FromBase64String(tk["inlineData"]["data"].Value<string>()), "png", ResultType.ImageBytes);
+                        if (tk["thoughtSignature"] != null)
+                        {
+                            fr.thoughtSignature = tk["thoughtSignature"].ToString();
+                        }
+                        results.Add(fr);
+                    }
+                }
             }
-            else
-            {
-                return Result.Error(content);
-            }
+            if(results.Count>1)
+                return MultiMediaResult.Answer(results);
+            if(results.Count>0)
+                return results[0];
         }
-        else
-            return Result.Error(content);
+        return Result.Error(content);
     }
 
     public async Task<(string mimeType, string uri)> UploadMediaFile(byte[] file, string fileName)
