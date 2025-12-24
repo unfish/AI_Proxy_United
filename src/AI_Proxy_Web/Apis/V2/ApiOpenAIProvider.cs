@@ -49,6 +49,7 @@ public class ApiOpenAIProvider : ApiProviderBase
         var msgs = GetFullMessages(input.ChatContexts);
         var opt = GetExtraOptions(input.External_UserId);
         var effort = _useThinkingMode && opt is { Count: > 0 } ? opt[0].CurrentValue : null;
+        bool? thinking = _useThinkingMode && apiClassAttribute.Provider.StartsWith("Qwen") ? true : null;
         return JsonConvert.SerializeObject(new
         {
             model = model,
@@ -58,7 +59,8 @@ public class ApiOpenAIProvider : ApiProviderBase
             max_completion_tokens = _maxTokens,
             user = input.External_UserId,
             stream,
-            reasoning_effort = effort
+            reasoning_effort = effort,
+            enable_thinking = thinking
         }, jSetting);
     }
 
@@ -135,42 +137,37 @@ public class ApiOpenAIProvider : ApiProviderBase
         var resultHtmlIndex = 0;
         foreach (var ctx in chatContexts.Contexts)
         {
-            isImageMsg = ctx.QC.Any(x => x.Type == ChatType.图片Base64 || x.Type == ChatType.图片Url);
-            if (isImageMsg)
+            List<object> contents = new List<object>();
+            foreach (var qc in ctx.QC)
             {
-                List<VisionMessageContent> contents = new List<VisionMessageContent>();
-                foreach (var qc in ctx.QC)
+                if (qc.Type == ChatType.图片Base64)
                 {
-                    if (qc.Type == ChatType.图片Base64)
-                    {
-                        contents.Add(new VisionMessageContent()
-                            { Type = "image_url", ImageUrl = new VisionMessageImageUrl() { url = $"data:{(string.IsNullOrEmpty(qc.MimeType) ? "image/jpeg" : qc.MimeType)};base64," + qc.Content } });
-                    }
-                    else  if (qc.Type == ChatType.图片Url)
-                    {
-                        contents.Add(new VisionMessageContent()
-                            { Type = "image_url", ImageUrl = new VisionMessageImageUrl() { url = qc.Content } });
-                    }
-                    else if (qc.Type == ChatType.文本 || qc.Type== ChatType.提示模板 || qc.Type== ChatType.图书全文)
-                    {
-                        contents.Add(new VisionMessageContent() { Type = "text", Text = qc.Content });
-                    }
+                    contents.Add(new
+                        { type = "image_url", image_url = new { url = $"data:{(string.IsNullOrEmpty(qc.MimeType) ? "image/jpeg" : qc.MimeType)};base64," + qc.Content } });
                 }
-                msgs.Add(new VisionMessage {role = "user", content = contents.ToList()});
-            }
-            else
-            {
-                foreach (var qc in ctx.QC)
+                else  if (qc.Type == ChatType.图片Url)
                 {
-                    if (qc.Type == ChatType.文本 || qc.Type== ChatType.提示模板 || qc.Type== ChatType.图书全文)
+                    contents.Add(new
+                        { type = "image_url", image_url = new { url = qc.Content } });
+                }
+                else  if (qc.Type == ChatType.语音Base64)
+                {
+                    contents.Add(new
                     {
-                        msgs.Add(new TextMessage()
+                        type = "input_audio",
+                        input_audio = new
                         {
-                            role = "user", content = qc.Content
-                        });
-                    }
+                            data = (_modelName.StartsWith("qwen") ? "data:audio/mpeg;base64," : "") + qc.Content, //Qwen3 Omni需要使用带mime type的base64，OpenAI 4o Audio不需要
+                            format = "mp3"
+                        }
+                    });
+                }
+                else if (qc.Type == ChatType.文本 || qc.Type== ChatType.提示模板 || qc.Type== ChatType.图书全文)
+                {
+                    contents.Add(new { type = "text", text = qc.Content });
                 }
             }
+            msgs.Add(new VisionMessage {role = "user", content = contents.ToList()});
 
             //处理输出部分的参数
             foreach (var ac in ctx.AC)
@@ -707,23 +704,7 @@ public class ApiOpenAIProvider : ApiProviderBase
     }
     protected class VisionMessage:Message
     {
-        public List<VisionMessageContent> content { get; set; }
-    }
-    protected class VisionMessageContent
-    {
-        [JsonProperty("type")]
-        public string Type { get; set; }
-        [JsonProperty("text")]
-        public string? Text { get; set; }
-        [JsonProperty("image_url")]
-        public VisionMessageImageUrl? ImageUrl { get; set; }
-        
-        [JsonProperty("image_base64")]
-        public string? ImageBase64 { get; set; } //商汤专用
-    }
-    protected class VisionMessageImageUrl
-    {
-        public string url { get; set; }
+        public List<object> content { get; set; }
     }
 
     protected class ToolParamter
@@ -734,11 +715,6 @@ public class ApiOpenAIProvider : ApiProviderBase
     {
         public Function function { get; set; }
     }
-    protected class WebSearchToolParamter:ToolParamter
-    {
-        public object web_search { get; set; } //各家格式不太一样，留一个通用格式处理
-    }
-
     #endregion
     
     
@@ -1015,10 +991,20 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
             {
                 if (ac.Type == ChatType.文本 && !string.IsNullOrEmpty(ac.Content))
                 {
-                    msgs.Add(new ResponseApiInput()
+                    if (apiClassAttribute.Provider.StartsWith("Doubao"))
                     {
-                        role = "assistant", content = new[] { new { type = "output_text", text = ac.Content } }
-                    });
+                        msgs.Add(new
+                        {
+                            role = "assistant", content = new[] { new { type = "output_text", text = ac.Content } }, type="message", status="completed"
+                        });
+                    }
+                    else
+                    {
+                        msgs.Add(new
+                        {
+                            role = "assistant", content = new[] { new { type = "output_text", text = ac.Content } }
+                        });
+                    }
                 }
                 else if (ac.Type == ChatType.FunctionCall && !string.IsNullOrEmpty(ac.Content))
                 {
@@ -1054,17 +1040,33 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
         }
 
         var effort = apiClassAttribute.UseThinkingMode ? GetExtraOptions(input.External_UserId)[0].CurrentValue : "disable";
-        return JsonConvert.SerializeObject(new
+        if (apiClassAttribute.Provider.StartsWith("Doubao"))
         {
-            model,
-            reasoning = effort != "disable" ?  new { summary = "auto", effort = effort } : null,
-            input = msgs,
-            tools,
-            store = false,
-            max_output_tokens = _maxTokens,
-            user = input.External_UserId,
-            stream
-        }, jSetting);
+            return JsonConvert.SerializeObject(new
+            {
+                model,
+                thinking = new {type="enabled"},
+                reasoning = new {effort = effort=="disable"?"minimal": effort},
+                input = msgs,
+                tools,
+                store = false,
+                max_output_tokens = _maxTokens,
+                //user = input.External_UserId,
+                stream
+            }, jSetting);
+        }
+        else
+            return JsonConvert.SerializeObject(new
+            {
+                model,
+                reasoning = effort != "disable" ?  new { summary = "auto", effort = effort } : null,
+                input = msgs,
+                tools,
+                store = false,
+                max_output_tokens = _maxTokens,
+                //user = input.External_UserId,
+                stream
+            }, jSetting);
     }
 }
 
