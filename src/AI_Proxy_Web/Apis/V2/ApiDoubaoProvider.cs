@@ -262,149 +262,6 @@ public class ApiDoubaoProvider : ApiOpenAIProvider
         }
     }
 
-    private async IAsyncEnumerable<Result> DoTextToVoiceStream(ApiChatInputIntern input)
-    {
-        var results = new BlockingCollection<Result>();
-        input.AudioVoice = "zh_male_yuanboxiaoshu_moon_bigtts"; //zh_male_ahu_conversation_wvae_bigtts
-        var url = "wss://openspeech.bytedance.com/api/v1/tts/ws_binary";
-        using (var ws = new ClientWebSocket())
-        { 
-            ws.Options.SetRequestHeader("Authorization", $"Bearer; {ttsToken}");
-            await ws.ConnectAsync(new Uri(url), CancellationToken.None);
-            Task.Run(async () =>
-            {
-                var buffer = new ArraySegment<byte>(new byte[1024 * 4]);
-                while (ws.State == WebSocketState.Open)
-                {
-                    var bytesList = new List<byte>();
-                    WebSocketReceiveResult result;
-                    do
-                    {
-                        result =
-                            await ws.ReceiveAsync(buffer, CancellationToken.None);
-                        bytesList.AddRange(buffer.Array[..result.Count]);
-                    }while(!result.EndOfMessage);
-                    if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-                        break;
-                    }
-                    else
-                    {
-                        var bytes = bytesList.ToArray();
-                        int protocolVersion = (bytes[0] & 0xff) >> 4;
-                        int headerSize = bytes[0] & 0x0f;
-                        int messageType = (bytes[1] & 0xff) >> 4;
-                        int messageTypeSpecificFlags = bytes[1] & 0x0f;
-                        int serializationMethod = (bytes[2] & 0xff) >> 4;
-                        int messageCompression = bytes[2] & 0x0f;
-                        int reserved = bytes[3] & 0xff;
-                        int position = headerSize * 4;
-                        byte[] fourByte = new byte[4];
-
-                        if (messageType == 11)
-                        {
-                            // Audio-only server response
-                            if (messageTypeSpecificFlags == 0)
-                            {
-                                // Ack without audio data
-                            }
-                            else
-                            {
-                                Array.Copy(bytes, position, fourByte, 0, 4);
-                                position += 4;
-                                int sequenceNumber = IntFromBigEndianBytes(fourByte);
-                                Array.Copy(bytes, position, fourByte, 0, 4);
-                                position += 4;
-                                int payloadSize = IntFromBigEndianBytes(fourByte);
-                                byte[] payload = new byte[payloadSize];
-                                Array.Copy(bytes, position, payload, 0, payloadSize);
-                                
-                                results.Add(FileResult.Answer(payload, "pcm", ResultType.AudioBytes));
-                                if (sequenceNumber < 0)
-                                {
-                                    // received the last segment
-                                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-                                    break;
-                                }
-                            }
-                        }
-                        else if (messageType == 15)
-                        {
-                            // Error message from server
-                            Array.Copy(bytes, position, fourByte, 0, 4);
-                            position += 4;
-                            int code = IntFromBigEndianBytes(fourByte);
-                            Array.Copy(bytes, position, fourByte, 0, 4);
-                            position += 4;
-                            int messageSize = IntFromBigEndianBytes(fourByte);
-                            byte[] messageBytes = new byte[messageSize];
-                            Array.Copy(bytes, position, messageBytes, 0, messageSize);
-                            string message = Encoding.UTF8.GetString(messageBytes);
-                            Console.WriteLine($"{code} {message}");
-                            break;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Received unknown response message type: {messageType}");
-                            break;
-                        }
-                    }
-                }
-                results.CompleteAdding();
-            });
-            if (ws.State == WebSocketState.Open)
-            {
-                var msg = JsonConvert.SerializeObject(new
-                {
-                    app = new
-                    {
-                        appid = ttsAppId,
-                        token = "access_token",
-                        cluster = "volcano_tts"
-                    },
-                    user = new { uid = input.External_UserId },
-                    audio = new
-                    {
-                        voice_type = input.AudioVoice,
-                        encoding = string.IsNullOrEmpty(input.AudioFormat)
-                            ? "mp3"
-                            : input.AudioFormat, //wav / pcm / ogg_opus / mp3
-                        rate = 24000
-                    },
-                    request = new
-                    {
-                        reqid = Guid.NewGuid().ToString("N"),
-                        text = input.ChatContexts.Contexts.Last().QC.Last().Content,
-                        operation = "submit"
-                    }
-                });
-                byte[] jsonBytes = Encoding.UTF8.GetBytes(msg);
-                byte[] header = [0x11, 0x10, 0x10, 0x00];
-
-                using (var requestStream = new MemoryStream())
-                {
-                    using (var writer = new BinaryWriter(requestStream))
-                    {
-                        writer.Write(header);
-                        writer.Write(IntToBigEndianBytes(jsonBytes.Length));
-                        writer.Write(jsonBytes);
-                    }
-
-                    byte[] requestBytes = requestStream.ToArray();   
-                    await ws.SendAsync(new ArraySegment<byte>(requestBytes), WebSocketMessageType.Binary,
-                        WebSocketMessageFlags.EndOfMessage, CancellationToken.None);
-
-                }
-
-                foreach (var result in results.GetConsumingEnumerable())
-                {
-                    yield return result;
-                }
-            }
-        }
-    }
-    
     protected byte[] IntToBigEndianBytes(int value)
     {
         byte[] bytes = BitConverter.GetBytes(value);
@@ -422,7 +279,35 @@ public class ApiDoubaoProvider : ApiOpenAIProvider
         Array.Reverse(bytes);
         return BitConverter.ToInt32(bytes, 0);
     }
-    
+
+
+    public async Task<Result> VoiceToText(byte[] bytes, string fileName)
+    {
+        var _client = _httpClientFactory.CreateClient();
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-App-Id", ttsAppId);
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Access-Key", ttsToken);
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Resource-Id", "volc.bigasr.auc_turbo");
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Request-Id", Guid.NewGuid().ToString());
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("X-Api-Sequence", "-1");
+        var msg = JsonConvert.SerializeObject(new
+        {
+            user = new { uid = "AAA" },
+            audio = new
+            {
+                data = Convert.ToBase64String(bytes)
+            },
+            request = new { model_name = "bigmodel", enable_speaker_info = true }
+        });
+        var resp = await _client.SendAsync(
+            new HttpRequestMessage(HttpMethod.Post,
+                "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash")
+            {
+                Content = new StringContent(msg, Encoding.UTF8, "application/json")
+            });
+        var content = await resp.Content.ReadAsStringAsync();
+        var json = JObject.Parse(content);
+        return Result.Answer(json["result"]["text"].Value<string>());
+    }
 }
 
 [ApiProvider("DoubaoVideo")]
@@ -439,10 +324,37 @@ public class ApiDoubaoVideoProvider : ApiDoubaoProvider
         {
             new ExtraOption()
             {
-                Type = "尺寸", Contents = new []
+                Type = "尺寸", Contents = new[]
                 {
                     new KeyValuePair<string, string>("横屏", "16:9"),
                     new KeyValuePair<string, string>("竖屏", "9:16")
+                }
+            },
+            new ExtraOption()
+            {
+                Type = "带语音", Contents = new[]
+                {
+                    new KeyValuePair<string, string>("是", "true"),
+                    new KeyValuePair<string, string>("否", "false")
+                }
+            },
+            new ExtraOption()
+            {
+                Type = "视频时长", Contents = new[]
+                {
+                    new KeyValuePair<string, string>("5秒", "5"),
+                    new KeyValuePair<string, string>("8秒", "8"),
+                    new KeyValuePair<string, string>("10秒", "10"),
+                    new KeyValuePair<string, string>("12秒", "12"),
+                    new KeyValuePair<string, string>("15秒", "15"),
+                }
+            },
+            new ExtraOption()
+            {
+                Type = "图片模式", Contents = new[]
+                {
+                    new KeyValuePair<string, string>("参考图", "reference"),
+                    new KeyValuePair<string, string>("首尾帧", "frame")
                 }
             }
         };
@@ -466,31 +378,54 @@ public class ApiDoubaoVideoProvider : ApiDoubaoProvider
         HttpClient client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_key}");
         var url = "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks";
-        var prompt = input.ChatContexts.Contexts.Last().QC.First(t => t.Type == ChatType.文本).Content;
-        var image = input.ChatContexts.Contexts.Last().QC.FirstOrDefault(t => t.Type == ChatType.图片Base64)?.Content;
+        var qc = input.ChatContexts.Contexts.Last().QC;
+        var prompt = qc.First(t => t.Type == ChatType.文本).Content;
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         var opts = GetExtraOptions(input.External_UserId);
-        prompt += "  --resolution 1080p  --duration 5 --ratio " + opts[0].CurrentValue;
+        var contents = new List<object>();
+        contents.Add(new { type = "text", text = prompt });
+        if (opts[3].CurrentValue == "frame")
+        {
+            var images = qc.Where(t => t.Type == ChatType.图片Base64).ToList();
+            if (images.Count > 0)
+            {
+                contents.Add(new
+                {
+                    type = "image_url", image_url = new { url = "data:image/jpeg;base64," + images[0].Content },
+                    role = "first_frame"
+                });
+            }
+            if (images.Count > 1)
+            {
+                contents.Add(new
+                {
+                    type = "image_url", image_url = new { url = "data:image/jpeg;base64," + images[1].Content },
+                    role = "last_frame"
+                });
+            }
+        }
+        else
+        {
+            foreach (var image in qc.Where(t => t.Type == ChatType.图片Base64))
+            {
+                contents.Add(new
+                {
+                    type = "image_url", image_url = new { url = "data:image/jpeg;base64," + image.Content },
+                    role = "reference_image"
+                });
+            }
+        }
+
         var msg = JsonConvert.SerializeObject(new
         {
             model = _modelName,
-            content = new[]
-            {
-                new { type = "text", text = prompt }
-            }
+            content = contents.ToArray(),
+            tools = new[] { new { type = "web_search" } },
+            safety_identifier = input.External_UserId,
+            ratio = opts[0].CurrentValue,
+            generate_audio = opts[1].CurrentValue == "true",
+            duration = int.Parse(opts[2].CurrentValue)
         }, jSetting);
-        if (!string.IsNullOrEmpty(image))
-        {
-            msg = JsonConvert.SerializeObject(new
-            {
-                model = _modelName,
-                content = new object[]
-                {
-                    new { type = "text", text = prompt },
-                    new { type = "image_url", image_url = new { url = "data:image/jpeg;base64," + image } }
-                }
-            }, jSetting);
-        }
 
         var resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
         {

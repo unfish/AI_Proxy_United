@@ -36,10 +36,9 @@ public class ApiDoubaoImageProvider : ApiProviderBase
                 Type = "尺寸", Contents = new []
                 {
                     new KeyValuePair<string, string>("自动", "2K"),
-                    new KeyValuePair<string, string>("方形", "2048x2048"),
-                    new KeyValuePair<string, string>("横屏", "2304x1728"),
-                    new KeyValuePair<string, string>("竖屏", "1728x2304"),
-                    new KeyValuePair<string, string>("超高清", "4K")
+                    new KeyValuePair<string, string>("方形", "3072x3072"),
+                    new KeyValuePair<string, string>("横屏", "4096x2304"),
+                    new KeyValuePair<string, string>("竖屏", "2304x4096")
                 }
             }
         };
@@ -64,12 +63,13 @@ public class ApiDoubaoImageProvider : ApiProviderBase
         return JsonConvert.SerializeObject(new
         {
             model = _modelName,
-            prompt = input.ChatContexts.Contexts.Last().QC.Last().Content,
+            prompt = prompt,
             size = op,
             stream = true,
             respnose_format = "url",
             watermark = false,
-            image = images
+            image = images,
+            tools = new[] { new { type = "web_search" } }
         }, jSetting);
     }
     

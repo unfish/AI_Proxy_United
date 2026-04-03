@@ -49,7 +49,11 @@ public class ApiOpenAIProvider : ApiProviderBase
         var msgs = GetFullMessages(input.ChatContexts);
         var opt = GetExtraOptions(input.External_UserId);
         var effort = _useThinkingMode && opt is { Count: > 0 } ? opt[0].CurrentValue : null;
-        bool? thinking = _useThinkingMode && apiClassAttribute.Provider.StartsWith("Qwen") ? true : null;
+        bool? thinking = _useThinkingMode ? true : null;
+        if (_modelName.StartsWith("qwen") && thinking == null)
+        {
+            thinking = false;
+        }
         return JsonConvert.SerializeObject(new
         {
             model = model,
@@ -167,8 +171,10 @@ public class ApiOpenAIProvider : ApiProviderBase
                     contents.Add(new { type = "text", text = qc.Content });
                 }
             }
-            msgs.Add(new VisionMessage {role = "user", content = contents.ToList()});
+            if(contents.Count>0)
+                msgs.Add(new VisionMessage {role = "user", content = contents.ToList()});
 
+            var acIndex = 0;
             //处理输出部分的参数
             foreach (var ac in ctx.AC)
             {
@@ -188,7 +194,8 @@ public class ApiOpenAIProvider : ApiProviderBase
                         {
                             Id = t.Id, Type = "function",
                             Function = new FunctionCall() { Name = t.Name, Arguments = t.Arguments }
-                        }).ToList()
+                        }).ToList(),
+                        reasoning_content = (acIndex>0 && ctx.AC[acIndex-1].Type== ChatType.Reasoning && apiClassAttribute.Provider=="MoonShot")?ctx.AC[acIndex-1].Content:null
                     });
                     foreach (var call in acalls)
                     {
@@ -243,6 +250,8 @@ public class ApiOpenAIProvider : ApiProviderBase
                         }
                     }
                 }
+
+                acIndex++;
             }
         }
         
@@ -684,12 +693,13 @@ public class ApiOpenAIProvider : ApiProviderBase
     }
     protected class AssistantMessage:Message
     {
-        public string content { get; set; } = string.Empty;
+        public string? content { get; set; }
     }
     protected class AssistantToolsMessage:Message
     {
         public List<ToolCall> tool_calls { get; set; }
-        public string content { get; set; } = string.Empty;
+        public string? content { get; set; }
+        public string? reasoning_content { get; set; }
     }
     protected class ToolCall
     {

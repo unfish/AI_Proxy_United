@@ -29,9 +29,9 @@ public class ApiQwenImageProvider : ApiProviderBase
             {
                 Type = "尺寸", Contents = new []
                 {
-                    new KeyValuePair<string, string>("方形", "1328*1328"),
-                    new KeyValuePair<string, string>("横屏", "1472*1140"),
-                    new KeyValuePair<string, string>("竖屏", "1140*1472")
+                    new KeyValuePair<string, string>("方形", "2048*2048"),
+                    new KeyValuePair<string, string>("横屏", "2516*1666"),
+                    new KeyValuePair<string, string>("竖屏", "1666*2516")
                 }
             }
         };
@@ -39,6 +39,8 @@ public class ApiQwenImageProvider : ApiProviderBase
     
     private static string textToImageUrl =
         "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis";
+    private static string textToImageSyncUrl =
+        "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
     private static string textToImageTaskUrl = "https://dashscope.aliyuncs.com/api/v1/tasks/";
 
     private static string imageEditUrl =
@@ -91,6 +93,63 @@ public class ApiQwenImageProvider : ApiProviderBase
         
         var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
         return JsonConvert.SerializeObject(body, jSetting);
+    }
+    public string GetTextToImageSyncMsgBody(ApiChatInputIntern input)
+    {
+        var qc = input.ChatContexts.Contexts.Last().QC;
+        var body = new
+        {
+            model = _modelName,
+            input = new
+            {
+                messages = new[]
+                {
+                    new
+                    {
+                        role = "user",
+                        content = new[] { new { text = qc.FirstOrDefault(t => t.Type == ChatType.文本)?.Content } }
+                    }
+                }
+            },
+            parameters = new
+            {
+                size = GetExtraOptions(input.External_UserId)[0].CurrentValue,
+                prompt_extend = true
+            }
+        };
+        
+        var jSetting = new JsonSerializerSettings {NullValueHandling = NullValueHandling.Ignore};
+        return JsonConvert.SerializeObject(body, jSetting);
+    }
+    
+    public async IAsyncEnumerable<Result> TextToImageSync(ApiChatInputIntern input)
+    {
+        HttpClient client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_key}");
+        client.DefaultRequestHeaders.Add("X-DashScope-DataInspection", "disable");
+        var url = textToImageSyncUrl;
+        var msg = GetTextToImageSyncMsgBody(input);
+        var resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(msg, Encoding.UTF8, "application/json")
+        });
+        var content = await resp.Content.ReadAsStringAsync();
+        var json = JObject.Parse(content);
+        if (json["output"] != null && json["output"]["choices"] != null)
+        {
+            var arr = json["output"]["choices"][0]["message"]["content"] as JArray;
+            foreach (var item in arr)
+            {
+                var imageUrl = item["image"].Value<string>();
+                
+                var bytes = await client.GetByteArrayAsync(imageUrl);
+                yield return FileResult.Answer(bytes, "png", ResultType.ImageBytes);
+            }
+        }
+        else
+        {
+            yield return Result.Error(content);
+        }
     }
     
     public async IAsyncEnumerable<Result> TextToImage(ApiChatInputIntern input)
@@ -209,7 +268,7 @@ public class ApiQwenImageProvider : ApiProviderBase
         }
         else
         {
-            await foreach (var message in TextToImage(input))
+            await foreach (var message in TextToImageSync(input))
                 yield return message;
         }
     }

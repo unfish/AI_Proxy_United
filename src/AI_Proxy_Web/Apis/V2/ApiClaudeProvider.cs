@@ -205,7 +205,7 @@ public class ApiClaudeProvider : ApiProviderBase
                     }));
         }
         var think = _useThinkingMode
-            ? new { type = "enabled", budget_tokens = _maxTokens / 2 }
+            ? new { type = "adaptive" }
             : null;
         var system = new[]
         {
