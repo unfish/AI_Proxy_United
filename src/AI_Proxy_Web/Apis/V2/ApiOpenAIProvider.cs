@@ -963,16 +963,13 @@ public class ApiOpenAIResponseProvider : ApiOpenAIProvider
                     contents.Add(new
                     {
                         type = "input_image",
-                        image_url = new
-                        {
-                            url = $"data:{(string.IsNullOrEmpty(qc.MimeType) ? "image/jpeg" : qc.MimeType)};base64," +
-                                  qc.Content
-                        }
+                        image_url =  $"data:{(string.IsNullOrEmpty(qc.MimeType) ? "image/jpeg" : qc.MimeType)};base64," +
+                                     qc.Content
                     });
                 }
                 else if (qc.Type == ChatType.图片Url)
                 {
-                    contents.Add(new { type = "input_image", image_url = new { url = qc.Content } });
+                    contents.Add(new { type = "input_image", image_url = qc.Content });
                 }
                 else if (qc.Type == ChatType.文件Bytes)
                 {
