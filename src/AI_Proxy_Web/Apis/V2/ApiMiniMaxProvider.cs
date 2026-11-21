@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using AI_Proxy_Web.Apis.Base;
 using AI_Proxy_Web.Apis.V2.Extra;
@@ -286,11 +287,31 @@ public class ApiMiniMaxImageProvider : ApiMiniMaxProvider
     }
     public async IAsyncEnumerable<Result> TextToImage(ApiChatInputIntern input)
     {
+        var question = input.ChatContexts.Contexts.Last().QC;
+        var prompt = question.LastOrDefault(t => t.Type == ChatType.文本)?.Content;
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            yield return Result.Error("Image generation requires a text prompt.");
+            yield break;
+        }
+        if (_modelName is "MiniMax-H3-Image" or "MiniMax-H3-Image-Highspeed")
+        {
+            if (question.Any(t => t.Type is ChatType.图片Base64 or ChatType.图片Url))
+            {
+                yield return Result.Error("H3 text-to-image accepts a text prompt only.");
+                yield break;
+            }
+
+            var aspectRatio = GetExtraOptions(input.External_UserId)[0].CurrentValue;
+            await foreach (var result in GenerateH3Images(prompt, aspectRatio))
+                yield return result;
+            yield break;
+        }
+
         var url = "https://api.minimax.chat/v1/image_generation";
         var _client = _httpClientFactory.CreateClient();
         _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_key}");
-        var prompt = input.ChatContexts.Contexts.Last().QC.Last(t => t.Type == ChatType.文本).Content;
-        var img = input.ChatContexts.Contexts.Last().QC.LastOrDefault(t => t.Type == ChatType.图片Base64)?.Content;
+        var img = question.LastOrDefault(t => t.Type == ChatType.图片Base64)?.Content;
         var imgRef = img == null
             ? null
             : new
@@ -325,6 +346,49 @@ public class ApiMiniMaxImageProvider : ApiMiniMaxProvider
         else
         {
             yield return Result.Error(content);
+        }
+    }
+
+    private async IAsyncEnumerable<Result> GenerateH3Images(string prompt, string aspectRatio)
+    {
+        var host = _host?.TrimEnd('/');
+        if (string.IsNullOrEmpty(host) || string.Equals(host, "https://api.minimax.chat/v1", StringComparison.OrdinalIgnoreCase))
+            host = "https://api.minimax.cn/v1";
+
+        using var client = _httpClientFactory.CreateClient();
+        client.Timeout = TimeSpan.FromMinutes(10);
+        var body = JsonConvert.SerializeObject(new
+        {
+            model = _modelName, prompt, aspect_ratio = aspectRatio,
+            response_format = "b64_json", output_format = "png", n = 1
+        });
+        using var request = new HttpRequestMessage(HttpMethod.Post, host + "/images/generations")
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _key);
+        using var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            yield return Result.Error(content);
+            yield break;
+        }
+
+        if (JObject.Parse(content)["data"] is not JArray { Count: > 0 } images)
+        {
+            yield return Result.Error("H3 returned no image results.");
+            yield break;
+        }
+
+        foreach (var image in images)
+        {
+            if (image["error"] is JObject error)
+                yield return Result.Error(error.ToString(Formatting.None));
+            else if (image.Value<string>("b64_json") is { Length: > 0 } encoded)
+                yield return FileResult.Answer(Convert.FromBase64String(encoded), "png", ResultType.ImageBytes);
+            else
+                yield return Result.Error("H3 returned an image result without image data.");
         }
     }
 }

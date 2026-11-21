@@ -182,6 +182,14 @@
       "Id": 212, "Order": 212, "Provider": "DoubaoImage", "Type": "画图模型", "ModelName":"high_aes_general_v30l_zt2i", "DisplayName": "豆包画图", "Description": "豆包是字节新推出的画图模型，得分很高。", 
       "Hidden": true
     },
+    "MiniMaxH3Image": {
+      "Id": 213, "Order": 213, "Provider": "MiniMaxImage", "Type": "画图模型", "ModelName": "MiniMax-H3-Image",
+      "DisplayName": "MiniMax H3 Image", "Description": "Generate an image from a text prompt.", "Hidden": true
+    },
+    "MiniMaxH3ImageHighspeed": {
+      "Id": 214, "Order": 214, "Provider": "MiniMaxImage", "Type": "画图模型", "ModelName": "MiniMax-H3-Image-Highspeed",
+      "DisplayName": "MiniMax H3 Image Highspeed", "Description": "Generate an image from a text prompt with lower latency.", "Hidden": true
+    },
     "PPIOQwenImage": {
       "Id": 205, "Order": 205, "Provider": "PPIOMedia", "Type": "画图模型", "ModelName":"qwen-image-txt2img", "DisplayName": "千问画图", "Description": "千问开源的画图模型，可以正确渲染大量中文文字，全网唯一。", 
       "Hidden": true
